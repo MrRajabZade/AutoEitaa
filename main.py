@@ -115,7 +115,7 @@ def send_Message(driver, text):
     messagebox.send_keys(text)
     messagebox.send_keys(Keys.ENTER)
 
-def reply_Message(driver, textnew, Message):
+def reply_Message(driver, text, Message):
     action = ActionChains(driver)
     action.context_click(on_element = Message)
     try:
@@ -140,7 +140,7 @@ def reply_Message(driver, textnew, Message):
         messagebox = driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
     except:
         return "Error in find_message_box"
-    messagebox.send_keys(textnew)
+    messagebox.send_keys(text)
     messagebox.send_keys(Keys.ENTER)
 
 def edit_Message(driver, textnew, Message):
