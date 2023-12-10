@@ -38,7 +38,7 @@ Example :
 ```py
 filepath = [r"C:\Users\hp\Documents\Eitaabot\img.png", r"C:\Users\hp\Documents\Eitaabot\img.jpg"]
 caption = "salam"
-send_file(driver, filepath, caption
+send_file(driver, filepath, caption)
 ```
 **Note**: 
 - You need to be in the chat to send a message
@@ -54,6 +54,4 @@ text = "salam"
 reply_Message(driver, text, Message)
 ```
 **Note**: You need to be in the chat to send a message
-
-```
 
