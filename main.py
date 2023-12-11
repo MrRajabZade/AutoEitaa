@@ -51,7 +51,7 @@ def start(nameBrowser):
     sleep(15.5)
     return driver
 
-def start_wet(nameBrowser):
+def startwet(nameBrowser):
     nameBrowser = nameBrowser.lower()
     if str(nameBrowser) == "firefox":
         wet = webdriver.Firefox()
@@ -419,7 +419,7 @@ def get_phone(driver):
         phone = str(phone.text)
         return str(phone)
     
-def Search_wet(wet, text):
+def Searchwet(wet, text):
     s = wet.find_element(By.CSS_SELECTOR, "input.form-control")
     s.click()
     s.send_keys(text)
