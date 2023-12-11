@@ -24,7 +24,7 @@ Eitaabot toolkit for making bot in Eitaa
 from main import *
 
 driver = start(namebrowser="Firefox")
-wet = start_wet(namebrowser="Firefox")
+wet = startwet(namebrowser="Firefox")
 ```
 ## Send Message
 Example :
@@ -49,9 +49,9 @@ send_file(driver, filepath, caption)
 ## Reply Message
 Example :
 ```py
-Message = "<selenium.webdriver.remote.webelement.WebElement (session="d79fe6d7-1db5-45de-a9d1-4df4881dc92b", element="bb9c6560-411c-444a-acbf-2bb311b8823e")>"
+message = "<selenium.webdriver.remote.webelement.WebElement (session="d79fe6d7-1db5-45de-a9d1-4df4881dc92b", element="bb9c6560-411c-444a-acbf-2bb311b8823e")>"
 text = "salam"
-reply_Message(driver, text, Message)
+reply_Message(driver, text, message)
 ```
 **Note**: You need to be in the chat to send a message
 
