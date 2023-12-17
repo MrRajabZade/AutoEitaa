@@ -23,7 +23,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver import ActionChains
 
-def start(nameBrowser):
+def StartBot(nameBrowser):
     nameBrowser = nameBrowser.lower()
     if str(nameBrowser) == "firefox":
         driver = webdriver.Firefox()
@@ -51,7 +51,7 @@ def start(nameBrowser):
     sleep(15.5)
     return driver
 
-def startwet(nameBrowser):
+def StartWetBot(nameBrowser):
     nameBrowser = nameBrowser.lower()
     if str(nameBrowser) == "firefox":
         wet = webdriver.Firefox()
@@ -311,7 +311,6 @@ def on_message(driver):
         name = str(namebox.text)
         chat.click()
         sleep(3)
-        s = ""
         for y in range(1, int(int(bubbletext)+1)):
             chatbox = driver.find_element(By.CLASS_NAME, "bubble-content-wrapper")
             day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
@@ -335,10 +334,9 @@ def on_message(driver):
         'text' : str(text),
         'chat_id' : str(chat_id),
         'language_code' : str(Codelanguage),
-        'message_box':str(messagebox),
 }
-            s = str(str(datatext)+"Next"+str(s))
-        return str(s)
+            
+        return datatext, messagebox
 
 def get_info(driver, chat_id):
     driver.get("https://web.eitaa.com/#"+str(chat_id))
@@ -471,7 +469,7 @@ def send_file(driver, filepath, caption):
     send = driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(3)")
     send.click()
 
-def OnChatUpdate(driver):
+def on_chat_update(driver):
     chatbox = driver.find_element(By.CLASS_NAME, "bubble-content-wrapper")
     day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
     chatbox = driver.find_elements(By.CLASS_NAME, "bubble-content-wrapper")[-1]
@@ -489,3 +487,49 @@ def OnChatUpdate(driver):
     text = str(bd[0])
     return str(text), str(text1), messagebox
 
+def bot_command(messagebox, command):
+    message = str(messagebox.get_attribute("innerHTML"))
+    message = str(message)
+    message = message.replace('\u200c',' ')
+    db = str(message)
+    bd = db.split('<span class="time tgico"')
+    text = str(bd[0])
+    command = "\\" + str(command)
+    if str(text) == str(command):
+        return True
+    else:
+        return False
+    
+def getuserphotos(driver):
+    bar = driver.find_element(By.CSS_SELECTOR, "div.sidebar-header:nth-child(2)")
+    bar.click()
+    b = 0
+    s = 0
+    d = ""
+    while b!=1:
+        s = s + 1
+        try:
+            photo = driver.find_element(By.CSS_SELECTOR, "div.profile-avatars-avatar:nth-child("+str(s)+") > img:nth-child(1)")
+        except:
+            b=1
+        l = photo.get_attribute('src')
+        d = d + str(l) + ","
+    return str(d)
+
+def banuser(driver):
+    s = driver.find_element(By.CSS_SELECTOR, "div.btn-icon:nth-child(6)")
+    s.click()
+    b = driver.find_element(By.CSS_SELECTOR, ".tgico-lock")
+    b.click()
+
+def adduser(driver):
+    s = driver.find_element(By.CSS_SELECTOR, "div.btn-icon:nth-child(6)")
+    s.click()
+    b = driver.find_element(By.CSS_SELECTOR, ".tgico-adduser")
+    b.click()
+
+def deletechat(driver):
+    s = driver.find_element(By.CSS_SELECTOR, "div.btn-icon:nth-child(6)")
+    s.click()
+    b = driver.find_element(By.CSS_SELECTOR, "div.tgico-delete:nth-child(12)")
+    b.click()
