@@ -11,7 +11,11 @@ Eitaabot toolkit for making bot in Eitaa
 - [x] delete Message
 - [x] Search
 - [x] On Message
-- [x] OnChatUpdate 
+- [x] On Chat Update
+- [x] delete chat
+- [x] Add Contacts
+- [x] Bot Command
+- [x] Ban User 
 - [x] Create Channel
 - [x] delete Member 
 - [x] Folders Tabs 
