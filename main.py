@@ -110,14 +110,14 @@ def chat_id(text, im, driver):
         chat_id = chat.get_attribute("data-peer-id")
         return str(chat_id)
 
-def send_Message(driver, text):
+def send_message(driver, text):
     messagebox = driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
     messagebox.send_keys(text)
     messagebox.send_keys(Keys.ENTER)
 
-def reply_Message(driver, text, Message):
+def reply_message(driver, text, message):
     action = ActionChains(driver)
-    action.context_click(on_element = Message)
+    action.context_click(on_element = message)
     try:
         k = driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(4)")
         k.click()
@@ -143,9 +143,9 @@ def reply_Message(driver, text, Message):
     messagebox.send_keys(text)
     messagebox.send_keys(Keys.ENTER)
 
-def edit_Message(driver, textnew, Message):
+def edit_message(driver, textnew, message):
     action = ActionChains(driver)
-    action.context_click(on_element = Message)
+    action.context_click(on_element = message)
     try:
         k = driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(4)")
         k.click()
@@ -173,9 +173,9 @@ def edit_Message(driver, textnew, Message):
     messagebox.send_keys(textnew)
     messagebox.send_keys(Keys.ENTER)
 
-def forward_Message(driver, target, Message):
+def forward_message(driver, target, message):
     action = ActionChains(driver)
-    action.context_click(on_element = Message)
+    action.context_click(on_element = message)
     try:
         k = driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(4)")
         k.click()
@@ -204,9 +204,9 @@ def forward_Message(driver, target, Message):
     messagebox = driver.find_element(By.CSS_SELECTOR, 'div.chat:nth-child(2) > div:nth-child(4) > div:nth-child(1) > div:nth-child(1) > div:nth-child(8) > div:nth-child(2) > div:nth-child(1)')
     messagebox.send_keys(Keys.ENTER)
 
-def pin_Message(driver, Message):
+def pin_message(driver, message):
     action = ActionChains(driver)
-    action.context_click(on_element = Message)
+    action.context_click(on_element = message)
     try:
         k = driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(4)")
         k.click()
@@ -229,7 +229,7 @@ def pin_Message(driver, Message):
     pin.click()
     sleep(2)
 
-def delete_Message(driver, Message):
+def delete_message(driver, message):
     action = ActionChains(driver)
     try:
         k = driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(4)")
@@ -252,8 +252,9 @@ def delete_Message(driver, Message):
     delete = driver.find_element(By.CSS_SELECTOR, 'button.btn:nth-child(1) > div:nth-child(1)')
     delete.click()
 
-def Search(driver, text, textmessage, Message):
+def Search(driver, text, textmessage, message):
     search = driver.find_element(By.CSS_SELECTOR, '#main-search')
+    sleep(3)
     search.click()
     searchbox = driver.find_element(By.XPATH, '/html/body/div[2]/div[1]/div[1]/div/div/div[1]/div[2]/input')
     sleep(4)
@@ -262,19 +263,19 @@ def Search(driver, text, textmessage, Message):
     channel = driver.find_element(By.CSS_SELECTOR, '.search-group > ul:nth-child(1) > li:nth-child(1)')
     channel.click()
     sleep(2)
-    if Message == True:
+    if message == True:
         searchbutton = driver.find_element(By.CSS_SELECTOR, "button.tgico-search:nth-child(5) > div:nth-child(1)")
         searchbutton.click()
         sleep(2)
         searchbox2 = driver.find_element(By.CSS_SELECTOR, "#search-private-container > div:nth-child(1) > div:nth-child(2) > input:nth-child(1)")
-        sleep(2)
+        sleep(5)
         searchbox2.send_keys(textmessage)
         sleep(4)
-        Messagebox = driver.find_element(By.CSS_SELECTOR, ".search-group-messages > ul:nth-child(2) > li:nth-child(1)")
-        Messagebox.click()
-        Messageh_id = Messagebox.get_attribute("data-mid")
-        Message = driver.find_element(By.XPATH, """//div[@data-mid=""""+str(Messageh_id)""""]""")
-        return Message
+        messagebox = driver.find_element(By.CSS_SELECTOR, ".search-group-messages > ul:nth-child(2) > li:nth-child(1)")
+        messagebox.click()
+        messageh_id = messagebox.get_attribute("data-mid")
+        message = driver.find_element(By.XPATH, """//div[@data-mid=""""+str(messageh_id)""""]""")
+        return message
     return "done"
 
 def on_message(driver):
@@ -336,7 +337,7 @@ def on_message(driver):
         'language_code' : str(Codelanguage),
         'message_box':str(messagebox),
 }
-            s = str(str(datatext)+"\n"+str(s))
+            s = str(str(datatext)+"Next"+str(s))
         return str(s)
 
 def get_info(driver, chat_id):
@@ -396,7 +397,7 @@ def create_channel(driver, name, bio):
     next2 = driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(1)")
     sleep(1)
     next2.click()
-    send_Message(driver, ".")
+    send_message(driver, ".")
     chatid = chat_id(False, True, driver)
     result = {
         'name':str(name),
@@ -469,4 +470,22 @@ def send_file(driver, filepath, caption):
     caption2.send_keys(caption)
     send = driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(3)")
     send.click()
+
+def OnChatUpdate(driver):
+    chatbox = driver.find_element(By.CLASS_NAME, "bubble-content-wrapper")
+    day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
+    chatbox = driver.find_elements(By.CLASS_NAME, "bubble-content-wrapper")[-1]
+    day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
+    try:
+        messagebox=day.find_element(By.CLASS_NAME, "message")
+    except:
+        return "Error in find_message"
+    message = str(messagebox.get_attribute("innerHTML"))
+    message = str(message)
+    message = message.replace('\u200c',' ')
+    db = str(message)
+    bd = db.split('<span class="time tgico"')
+    text1 = str(bd[1])
+    text = str(bd[0])
+    return str(text), str(text1), messagebox
 
