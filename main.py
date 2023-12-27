@@ -464,3 +464,27 @@ def CheckMessage(messagebox_old, messagebox_new):
     else:
         return False
     
+def canSendToUser(driver, chat_id):
+    r = driver.execute_script("appUsersManager.canSendToUser("+str(chat_id)+")")
+    if str(r) == "True":
+        return True
+    else:
+        return False
+    
+def isUserOnline(driver, chat_id):
+    r = driver.execute_script("appUsersManager.isUserOnlineVisible("+str(chat_id)+")")
+    if str(r) == "True":
+        return True
+    else:
+        return False
+
+def getChat(driver):
+    r = driver.execute_script("appChatsManager.chats")
+    return str(r)
+
+def isContact(driver, chat_id):
+    r = driver.execute_script("appUsersManager.isContact("+str(chat_id)+")")
+    if str(r) == "True":
+        return True
+    else:
+        return False
