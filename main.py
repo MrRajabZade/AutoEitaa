@@ -63,6 +63,31 @@ def detect_language(text):
         return language
     except:
         return "Unable to detect the language."
+    
+def canSendToUser(driver, chat_id):
+    r = driver.execute_script("appUsersManager.canSendToUser("+str(chat_id)+")")
+    if str(r) == "True":
+        return True
+    else:
+        return False
+    
+def isUserOnline(driver, chat_id):
+    r = driver.execute_script("appUsersManager.isUserOnlineVisible("+str(chat_id)+")")
+    if str(r) == "True":
+        return True
+    else:
+        return False
+
+def getChat(driver):
+    r = driver.execute_script("appChatsManager.chats")
+    return str(r)
+
+def isContact(driver, chat_id):
+    r = driver.execute_script("appUsersManager.isContact("+str(chat_id)+")")
+    if str(r) == "True":
+        return True
+    else:
+        return False
 
 def chat_id(im, text, driver):
     if im == True:
@@ -83,7 +108,17 @@ def chat_id(im, text, driver):
         return str(chat_id)
 
 def send_message(driver, chat_id, text):
-    driver.execute_script('appMessagesManager.sendText('+str(chat_id)+', "'+str(text)+'")')
+    r = canSendToUser(driver, chat_id)
+    if r == True:
+        driver.execute_script('appMessagesManager.sendText('+str(chat_id)+', "'+str(text)+'")')
+    else:
+        return False
+    try:
+        text2, name, Codelanguage, message_id, messagebox = onchatupdate(driver)
+    except:
+        return None
+    else:
+        return text2, name, Codelanguage, message_id, messagebox
     
 def reply_message(driver, text, message):
     action = ActionChains(driver)
@@ -105,21 +140,8 @@ def reply_message(driver, text, message):
         return "Error in find_message_box"
     messagebox.send_keys(text)
     messagebox.send_keys(Keys.ENTER)
-    chatbox = driver.find_elements(By.CLASS_NAME, "bubble-content-wrapper")[-1]
-    day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
-    try:
-        messagebox=day.find_element(By.CLASS_NAME, "message")
-    except:
-        return "Error in find_message"
-    else:
-        message = messagebox.get_attribute("innerHTML")
-        message = str(message)
-        message = message.replace('\u200c',' ')
-        db = str(message)
-        bd = db.split('<span class="time tgico"')
-        text = str(bd[0])
-        text = str(text)
-        return text, str(bd[1]), messagebox
+    text2, name, Codelanguage, message_id, messagebox2 = onchatupdate(driver)
+    return text2, name, Codelanguage, message_id, messagebox2
 
 def edit_message(driver, textnew, message):
     action = ActionChains(driver)
@@ -143,16 +165,18 @@ def edit_message(driver, textnew, message):
     messagebox.send_keys(Keys.BACKSPACE)
     messagebox.send_keys(textnew)
     messagebox.send_keys(Keys.ENTER)
-    return "done"
 
-def forward_message(driver, target, message):
+def forward_message(driver, target, message, quote):
     action = ActionChains(driver)
     action.context_click(on_element = message)
     sleep(1)
     action.perform()
     sleep(1)
     try:
-        forward = driver.find_element(By.CSS_SELECTOR, 'div.btn-menu-item:nth-child(18) > div:nth-child(1)')
+        if quote == True:
+            forward = driver.find_element(By.CSS_SELECTOR, 'div.btn-menu-item:nth-child(18)')
+        elif quote == False:
+            forward = driver.find_element(By.CSS_SELECTOR, 'div.btn-menu-item:nth-child(19)')
     except:
         return "Error in find_forward"
     try:
@@ -168,6 +192,8 @@ def forward_message(driver, target, message):
     sleep(1)
     messagebox = driver.find_element(By.CSS_SELECTOR, 'div.chat:nth-child(2) > div:nth-child(4) > div:nth-child(1) > div:nth-child(1) > div:nth-child(8) > div:nth-child(2) > div:nth-child(1)')
     messagebox.send_keys(Keys.ENTER)
+    text2, name, Codelanguage, message_id, messagebox2 = onchatupdate(driver)
+    return text2, name, Codelanguage, message_id, messagebox2
 
 def pin_message(driver, message):
     action = ActionChains(driver)
@@ -262,29 +288,29 @@ def on_message(driver):
         sleep(3)
         for y in range(1, int(int(bubbletext)+1)):
             x = int(str("-"+str(y)))
-            chatbox = driver.find_elements(By.CLASS_NAME, "bubble-content-wrapper")[int(x)]
+            bubble = driver.find_element(By.CLASS_NAME, "bubble")[int(x)]
+            message_id = bubble.get_attribute("data-mid")
+            chatbox = bubble.find_elements(By.CLASS_NAME, "bubble-content-wrapper")
             day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
-            try:
-                namebox = day.find_element(By.CLASS_NAME, "name")
-                name = namebox.find_element(By.CLASS_NAME, "peer-title").text
-            except:
-                l = 9
+            namebox = day.find_element(By.CLASS_NAME, "name")
+            name = namebox.find_element(By.CLASS_NAME, "peer-title").text
             try:
                 messagebox=day.find_element(By.CLASS_NAME, "message")
             except:
                 return "Error in find_message"
-            message = messagebox.get_attribute("innerHTML")
-            message = str(message)
-            message = message.replace('\u200c',' ')
-            db = str(message)
-            bd = db.split('<span class="time tgico"')
-            text = str(bd[0])
-            text = str(text)
+            # message = messagebox.get_attribute("innerHTML")
+            # message = str(message)
+            # message = message.replace('\u200c',' ')
+            # db = str(message)
+            # bd = db.split('<span class="time tgico"')
+            # text = str(bd[0])
+            text = str(messagebox.text)
             Codelanguage = detect_language(text)
-            return str(text), str(bd[1]), str(name), str(Codelanguage), messagebox
+            return str(text), str(name), str(Codelanguage), str(message_id), messagebox
 
 def get_info(driver, chat_id):
     driver.get("https://web.eitaa.com/#"+str(chat_id))
+    sleep(3.5)
     s = driver.find_element(By.CSS_SELECTOR, "div.sidebar-header:nth-child(2)")
     s.click()
     sleep(1)
@@ -354,14 +380,16 @@ def folders_tabs(driver, x):
     s.click()
     sleep(3.5)
 
-def get_phone(driver):
+def contactMessage(driver, messagebox):
     try:
-        phone = driver.find_element(By.CSS_SELECTOR, ".contact-number")
+        c = messagebox.find_element(By.CLASS_NAME, "contact")
     except:
-        return "invalid"
-    else:
-        phone = str(phone.text)
-        return str(phone)
+        return False
+    chat_id = c.get_attribute("data-peer-id")
+    d = c.find_element(By.CLASS_NAME, "contact-details")
+    name = d.find_element(By.CLASS_NAME, "contact-name")
+    number = d.find_element(By.CLASS_NAME, "contact-number")
+    return str(name), str(number), str(chat_id)
 
 def send_file(driver, filepath, caption):
     for i in filepath:
@@ -374,45 +402,42 @@ def send_file(driver, filepath, caption):
         messagebox = driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
         messagebox.send_keys(Keys.CONTROL + 'v')
     sleep(1)
-    caption2 = driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(4) > div:nth-child(1)")
+    caption2 = driver.find_element(By.CSS_SELECTOR, "div.input-field-input")
     caption2.click()
     caption2.send_keys(caption)
     send = driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(3)")
     send.click()
 
-def on_chat_update(driver):
-    chatbox = driver.find_element(By.CLASS_NAME, "bubble-content-wrapper")
-    day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
-    chatbox = driver.find_elements(By.CLASS_NAME, "bubble-content-wrapper")[-1]
+def onchatupdate(driver):
+    bubble = driver.find_element(By.CLASS_NAME, "bubble")[-1]
+    message_id = bubble.get_attribute("data-mid")
+    chatbox = bubble.find_elements(By.CLASS_NAME, "bubble-content-wrapper")
     day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
     try:
         messagebox=day.find_element(By.CLASS_NAME, "message")
     except:
-        return "Error in find_message"
+        return False
     else:
-        message = messagebox.get_attribute("innerHTML")
-        message = str(message)
-        message = message.replace('\u200c',' ')
-        db = str(message)
-        bd = db.split('<span class="time tgico"')
-        text = str(bd[0])
-        text = str(text)
-        return text, str(bd[1]), messagebox
+        # message = messagebox.get_attribute("innerHTML")
+        # message = str(message)
+        # message = message.replace('\u200c',' ')
+        # db = str(message)
+        # bd = db.split('<span class="time tgico"')
+        # text = str(bd[0])
+        text = str(messagebox.text)
+        namebox = day.find_element(By.CLASS_NAME, "name")
+        name = namebox.find_element(By.CLASS_NAME, "peer-title").text
+        Codelanguage = detect_language(text)
+        return str(text), str(name), str(Codelanguage), str(message_id), messagebox
 
-def bot_command(messagebox, command):
-    message = str(messagebox.get_attribute("innerHTML"))
-    message = str(message)
-    message = message.replace('\u200c',' ')
-    db = str(message)
-    bd = db.split('<span class="time tgico"')
-    text = str(bd[0])
+def bot_command(text, command):
     command = "//" + str(command)
     if str(text) == str(command):
         return True
     else:
         return False
     
-def getuserphotos(driver):
+def get_user_photos(driver):
     bar = driver.find_element(By.CSS_SELECTOR, "div.sidebar-header:nth-child(2)")
     bar.click()
     b = 0
@@ -428,63 +453,31 @@ def getuserphotos(driver):
         d = d + str(l) + ","
     return str(d)
 
-def banuser(driver):
+def ban_user(driver):
     s = driver.find_element(By.CSS_SELECTOR, "div.btn-icon:nth-child(6)")
     s.click()
     b = driver.find_element(By.CSS_SELECTOR, ".tgico-lock")
     b.click()
 
-def adduser(driver):
+def add_user(driver):
     s = driver.find_element(By.CSS_SELECTOR, "div.btn-icon:nth-child(6)")
     s.click()
     b = driver.find_element(By.CSS_SELECTOR, ".tgico-adduser")
     b.click()
 
-def deletechat(driver):
+def delete_chat(driver):
     s = driver.find_element(By.CSS_SELECTOR, "div.btn-icon:nth-child(6)")
     s.click()
     b = driver.find_element(By.CSS_SELECTOR, "div.tgico-delete:nth-child(12)")
     b.click()
 
-def CheckMessage(messagebox_old, messagebox_new):
-    message = str(messagebox_old.get_attribute("innerHTML"))
-    message = str(message)
-    message = message.replace('\u200c',' ')
-    db = str(message)
-    bd = db.split('<span class="time tgico"')
-    text = str(bd[1])
-    message2 = str(messagebox_new.get_attribute("innerHTML"))
-    message2 = str(message2)
-    message2 = message2.replace('\u200c',' ')
-    db2 = str(message2)
-    bd2 = db2.split('<span class="time tgico"')
-    text2 = str(bd2[1])
-    if str(text) == str(text2):
-        return True
-    else:
+def isMessageNew(messagebox_old, messagebox_new):
+    if str(messagebox_old) == str(messagebox_new):
         return False
+    else:
+        return True
     
-def canSendToUser(driver, chat_id):
-    r = driver.execute_script("appUsersManager.canSendToUser("+str(chat_id)+")")
-    if str(r) == "True":
-        return True
-    else:
-        return False
-    
-def isUserOnline(driver, chat_id):
-    r = driver.execute_script("appUsersManager.isUserOnlineVisible("+str(chat_id)+")")
-    if str(r) == "True":
-        return True
-    else:
-        return False
 
-def getChat(driver):
-    r = driver.execute_script("appChatsManager.chats")
-    return str(r)
+def editAbout(driver, chat_id, text):
+    driver.execute_script('appChatsManager.editAbout('+str(chat_id)+', "'+str(text)+'")')
 
-def isContact(driver, chat_id):
-    r = driver.execute_script("appUsersManager.isContact("+str(chat_id)+")")
-    if str(r) == "True":
-        return True
-    else:
-        return False
