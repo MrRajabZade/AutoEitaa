@@ -89,23 +89,10 @@ def isContact(driver, chat_id):
     else:
         return False
 
-def chat_id(im, text, driver):
-    if im == True:
-        chat = driver.find_element(By.CSS_SELECTOR, "div.user-title > span:nth-child(1)")
-        chat_id = chat.get_attribute("data-peer-id")
-        return str(chat_id)
-    else:
-        search = driver.find_element(By.CSS_SELECTOR, '#main-search')
-        search.click()
-        searchbox = driver.find_element(By.XPATH, '/html/body/div[2]/div[1]/div[1]/div/div/div[1]/div[2]/input')
-        sleep(4)
-        searchbox.send_keys(text)
-        sleep(1)
-        channel = driver.find_element(By.CSS_SELECTOR, '.search-group > ul:nth-child(1) > li:nth-child(1)')
-        channel.click()
-        chat = driver.find_element(By.CSS_SELECTOR, ".search-group > ul:nth-child(1) > li:nth-child(1)")
-        chat_id = chat.get_attribute("data-peer-id")
-        return str(chat_id)
+def chatid(driver):
+    chat = driver.find_element(By.CSS_SELECTOR, "div.user-title > span:nth-child(1)")
+    chat_id = chat.get_attribute("data-peer-id")
+    return str(chat_id)
 
 def send_message(driver, chat_id, text):
     r = canSendToUser(driver, chat_id)
@@ -114,11 +101,11 @@ def send_message(driver, chat_id, text):
     else:
         return False
     try:
-        text2, name, Codelanguage, message_id, messagebox = onchatupdate(driver)
+        text2, name, Codelanguage, message_id, map = onchatupdate(driver)
     except:
         return None
     else:
-        return text2, name, Codelanguage, message_id, messagebox
+        return text2, name, Codelanguage, message_id, map
     
 def reply_message(driver, text, message):
     action = ActionChains(driver)
@@ -135,13 +122,13 @@ def reply_message(driver, text, message):
     except:
         return "Error in click_reply"
     try:
-        messagebox = driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
+        map = driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
     except:
         return "Error in find_message_box"
-    messagebox.send_keys(text)
-    messagebox.send_keys(Keys.ENTER)
-    text2, name, Codelanguage, message_id, messagebox2 = onchatupdate(driver)
-    return text2, name, Codelanguage, message_id, messagebox2
+    map.send_keys(text)
+    map.send_keys(Keys.ENTER)
+    text2, name, Codelanguage, message_id, map2 = onchatupdate(driver)
+    return text2, name, Codelanguage, message_id, map2
 
 def edit_message(driver, textnew, message):
     action = ActionChains(driver)
@@ -158,13 +145,13 @@ def edit_message(driver, textnew, message):
     except:
         return "Error in click_edit"
     try:
-        messagebox = driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
+        map = driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
     except:
         return "Error in find_message_box"
-    messagebox.send_keys(Keys.CONTROL + 'a')
-    messagebox.send_keys(Keys.BACKSPACE)
-    messagebox.send_keys(textnew)
-    messagebox.send_keys(Keys.ENTER)
+    map.send_keys(Keys.CONTROL + 'a')
+    map.send_keys(Keys.BACKSPACE)
+    map.send_keys(textnew)
+    map.send_keys(Keys.ENTER)
 
 def forward_message(driver, target, message, quote):
     action = ActionChains(driver)
@@ -190,10 +177,10 @@ def forward_message(driver, target, message, quote):
     forwardtarget = driver.find_element(By.CSS_SELECTOR, '.selector > div:nth-child(1) > div:nth-child(1) > ul:nth-child(1) > li:nth-child(1)')
     forwardtarget.click()
     sleep(1)
-    messagebox = driver.find_element(By.CSS_SELECTOR, 'div.chat:nth-child(2) > div:nth-child(4) > div:nth-child(1) > div:nth-child(1) > div:nth-child(8) > div:nth-child(2) > div:nth-child(1)')
-    messagebox.send_keys(Keys.ENTER)
-    text2, name, Codelanguage, message_id, messagebox2 = onchatupdate(driver)
-    return text2, name, Codelanguage, message_id, messagebox2
+    map = driver.find_element(By.CSS_SELECTOR, 'div.chat:nth-child(2) > div:nth-child(4) > div:nth-child(1) > div:nth-child(1) > div:nth-child(8) > div:nth-child(2) > div:nth-child(1)')
+    map.send_keys(Keys.ENTER)
+    text2, name, Codelanguage, message_id, map2 = onchatupdate(driver)
+    return text2, name, Codelanguage, message_id, map2
 
 def pin_message(driver, message):
     action = ActionChains(driver)
@@ -295,18 +282,18 @@ def on_message(driver):
             namebox = day.find_element(By.CLASS_NAME, "name")
             name = namebox.find_element(By.CLASS_NAME, "peer-title").text
             try:
-                messagebox=day.find_element(By.CLASS_NAME, "message")
+                map=day.find_element(By.CLASS_NAME, "message")
             except:
                 return "Error in find_message"
-            # message = messagebox.get_attribute("innerHTML")
+            # message = map.get_attribute("innerHTML")
             # message = str(message)
             # message = message.replace('\u200c',' ')
             # db = str(message)
             # bd = db.split('<span class="time tgico"')
             # text = str(bd[0])
-            text = str(messagebox.text)
+            text = str(map.text)
             Codelanguage = detect_language(text)
-            return str(text), str(name), str(Codelanguage), str(message_id), messagebox
+            return str(text), str(name), str(Codelanguage), str(message_id), map
 
 def get_info(driver, chat_id):
     driver.get("https://web.eitaa.com/#"+str(chat_id))
@@ -380,9 +367,9 @@ def folders_tabs(driver, x):
     s.click()
     sleep(3.5)
 
-def contactMessage(driver, messagebox):
+def contactMessage(driver, map):
     try:
-        c = messagebox.find_element(By.CLASS_NAME, "contact")
+        c = map.find_element(By.CLASS_NAME, "contact")
     except:
         return False
     chat_id = c.get_attribute("data-peer-id")
@@ -399,8 +386,8 @@ def send_file(driver, filepath, caption):
         data = output.getvalue()[14:]
         output.close()
         send_to_clipboard(win32clipboard.CF_DIB, data)
-        messagebox = driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
-        messagebox.send_keys(Keys.CONTROL + 'v')
+        map = driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
+        map.send_keys(Keys.CONTROL + 'v')
     sleep(1)
     caption2 = driver.find_element(By.CSS_SELECTOR, "div.input-field-input")
     caption2.click()
@@ -414,21 +401,21 @@ def onchatupdate(driver):
     chatbox = bubble.find_elements(By.CLASS_NAME, "bubble-content-wrapper")
     day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
     try:
-        messagebox=day.find_element(By.CLASS_NAME, "message")
+        map=day.find_element(By.CLASS_NAME, "message")
     except:
         return False
     else:
-        # message = messagebox.get_attribute("innerHTML")
+        # message = map.get_attribute("innerHTML")
         # message = str(message)
         # message = message.replace('\u200c',' ')
         # db = str(message)
         # bd = db.split('<span class="time tgico"')
         # text = str(bd[0])
-        text = str(messagebox.text)
+        text = str(map.text)
         namebox = day.find_element(By.CLASS_NAME, "name")
         name = namebox.find_element(By.CLASS_NAME, "peer-title").text
         Codelanguage = detect_language(text)
-        return str(text), str(name), str(Codelanguage), str(message_id), messagebox
+        return str(text), str(name), str(Codelanguage), str(message_id), map
 
 def bot_command(text, command):
     command = "//" + str(command)
@@ -471,8 +458,8 @@ def delete_chat(driver):
     b = driver.find_element(By.CSS_SELECTOR, "div.tgico-delete:nth-child(12)")
     b.click()
 
-def isMessageNew(messagebox_old, messagebox_new):
-    if str(messagebox_old) == str(messagebox_new):
+def isMessageNew(map1, map2):
+    if str(map1) == str(map2):
         return False
     else:
         return True
