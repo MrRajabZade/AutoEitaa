@@ -1,62 +1,26 @@
 # Eitaabot
 Eitaabot toolkit for making bot in Eitaa
 
-## Features
-- [x] Send Message
-- [x] Send File
-- [x] Reply Message
-- [x] Edit Message
-- [x] Forward Message
-- [x] Pin Message
-- [x] delete Message
-- [x] Search
-- [x] On Message
-- [x] On Chat Update
-- [x] delete chat
-- [x] Add Contacts
-- [x] Bot Command
-- [x] Ban User 
-- [x] Create Channel
-- [x] delete Member 
-- [x] Folders Tabs 
-- [x] Get Phone
-- [x] Get Eitaa_ID
-- [x] Get info
-- [x] Get info Me             
-
-## Basic
-```py
-from main import *
-
-driver = start(namebrowser="Firefox")
-wet = startwet(namebrowser="Firefox")
-```
-## Send Message
-Example :
-```py
-text = "salam"
-send_Message(driver, text)
-```
-**Note**: You need to be in the chat to send a message
-## Send File
-Example :
-```py
-filepath = [r"C:\Users\hp\Documents\Eitaabot\img.png", r"C:\Users\hp\Documents\Eitaabot\img.jpg"]
-caption = "salam"
-send_file(driver, filepath, caption)
-```
-**Note**: 
-- You need to be in the chat to send a message
-
-- To send a gif, send the desired file with the .gif extension.
-
-- To send a sticker, you must send the desired file with the .webp extension
-## Reply Message
-Example :
-```py
-message = "<selenium.webdriver.remote.webelement.WebElement (session="d79fe6d7-1db5-45de-a9d1-4df4881dc92b", element="bb9c6560-411c-444a-acbf-2bb311b8823e")>"
-text = "salam"
-reply_Message(driver, text, message)
-```
-**Note**: You need to be in the chat to send a message
+## ابزارها
+- [x] ارسال پیام
+- [x] ارسال فایل
+- [x] پاسخ به پیام
+- [x] ویرایش ییام
+- [x] هدایت پیام
+- [x] سنجاق پیام
+- [x] حذف پیام
+- [x] جستجو
+- [x] منتظر پیام
+- [x] منتظر پیام در گفتگو
+- [x] حذف گفتگو
+- [x] افزودن مخاطب
+- [x] دستور ربات
+- [x] مسدود کاردن کاربر 
+- [x] ساخت کانال
+- [x] حدف دنبال کننده
+- [x] رفتن به پوشه
+- [x] منتظر پیام اشتراک گذاری شماره تماس مخاطب
+- [x] دریافت آیدی کاربر
+- [x] دریافت اطلاعات
+- [x] دریافت اطلاعات شما       
 
