@@ -71,6 +71,13 @@ def canSendToUser(driver, chat_id):
     else:
         return False
     
+def canSendToUser(driver, chat_id):
+    r = driver.execute_script("appUsersManager.canSendToUser("+str(chat_id)+")")
+    if str(r) == "True":
+        return True
+    else:
+        return False
+    
 def isUserOnline(driver, chat_id):
     r = driver.execute_script("appUsersManager.isUserOnlineVisible("+str(chat_id)+")")
     if str(r) == "True":
@@ -107,7 +114,7 @@ def send_message(driver, chat_id, text):
     else:
         return text2, name, Codelanguage, message_id, map
     
-def reply_message(driver, text, message):
+def reply_to_message(driver, text, message):
     action = ActionChains(driver)
     action.context_click(on_element = message)
     sleep(1)
@@ -354,11 +361,11 @@ def create_channel(driver, name, bio):
     sleep(1)
     next2.click()
     send_message(driver, ".")
-    chatid = chat_id(False, True, driver)
+    chat_id = chatid(False, True, driver)
     result = {
         'name':str(name),
         'bio':str(bio),
-        'chat_id':str(chatid),
+        'chat_id':str(chat_id),
     }
     return str(result)
 
