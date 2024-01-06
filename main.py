@@ -71,13 +71,6 @@ def canSendToUser(driver, chat_id):
     else:
         return False
     
-def canSendToUser(driver, chat_id):
-    r = driver.execute_script("appUsersManager.canSendToUser("+str(chat_id)+")")
-    if str(r) == "True":
-        return True
-    else:
-        return False
-    
 def isUserOnline(driver, chat_id):
     r = driver.execute_script("appUsersManager.isUserOnlineVisible("+str(chat_id)+")")
     if str(r) == "True":
@@ -471,7 +464,6 @@ def isMessageNew(map1, map2):
     else:
         return True
     
-
 def editAbout(driver, chat_id, text):
     driver.execute_script('appChatsManager.editAbout('+str(chat_id)+', "'+str(text)+'")')
 
