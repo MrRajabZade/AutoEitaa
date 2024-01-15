@@ -1,5 +1,4 @@
 # AutoEitaa
-AutoEitaa toolkit for making bot in Eitaa
 
 ## ابزارها
 - [x] ارسال پیام
