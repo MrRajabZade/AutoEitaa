@@ -51,6 +51,10 @@ def start(nameBrowser):
     sleep(15.5)
     return driver
 
+def copy_to_clipboard(file_name):
+    command = f"powershell Set-Clipboard -LiteralPath {file_name}"
+    os.system(command)
+
 def send_to_clipboard(clip_type, data):
     win32clipboard.OpenClipboard()
     win32clipboard.EmptyClipboard()
@@ -460,3 +464,21 @@ def onsubtitlechat(driver, x):
     else:
         subtitle = sub.find_element(By.CLASS_NAME, "user-last-message").text
         return str(subtitle), str(chatid)
+
+def get_message(driver, message_id):
+    message = driver.find_element_by_xpath('//div[@data-mid="'+str(message_id)+'"]')
+    chatbox = message.find_elements(By.CLASS_NAME, "bubble-content-wrapper")
+    day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
+    namebox = day.find_element(By.CLASS_NAME, "name")
+    name = namebox.find_element(By.CLASS_NAME, "peer-title").text
+    try:
+        map=day.find_element(By.CLASS_NAME, "message")
+    except:
+        return "Error in find_message"
+    text = str(map.text)
+    Codelanguage = detect_language(text)
+    return str(text), str(name), str(Codelanguage), str(message_id), map
+
+def get_message_id(driver, x):
+    bubble = driver.find_element(By.CLASS_NAME, "bubble")[int(x)]
+    message_id = bubble.get_attribute("data-mid")
