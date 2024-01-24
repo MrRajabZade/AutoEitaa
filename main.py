@@ -376,6 +376,19 @@ def send_album(driver, filepath, caption):
     send = driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(3)")
     send.click()
 
+def send_other(driver, path, caption):
+    n = 3
+    for i in path:
+        copy_to_clipboard(str(i))
+        map = driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
+        map.send_keys(Keys.CONTROL + 'v')
+        n += 1
+    sleep(1)
+    caption2 = driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child("+str(n)+") > div:nth-child(1)")
+    caption2.send_keys(caption)
+    send = driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(3)")
+    send.click()
+
 def onchatupdate(driver):
     bubble = driver.find_elements(By.CLASS_NAME, "bubble")[-1]
     message_id = bubble.get_attribute("data-mid")
