@@ -466,7 +466,7 @@ def onsubtitlechat(driver, x):
         return str(subtitle), str(chatid)
 
 def get_message(driver, message_id):
-    message = driver.find_element_by_xpath('//div[@data-mid="'+str(message_id)+'"]')
+    message = driver.find_element(By.XPATH, '//div[@data-mid="'+str(message_id)+'"]')
     chatbox = message.find_elements(By.CLASS_NAME, "bubble-content-wrapper")
     day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
     namebox = day.find_element(By.CLASS_NAME, "name")
@@ -479,6 +479,14 @@ def get_message(driver, message_id):
     Codelanguage = detect_language(text)
     return str(text), str(name), str(Codelanguage), str(message_id), map
 
-def get_message_id(driver, x):
-    bubble = driver.find_element(By.CLASS_NAME, "bubble")[int(x)]
-    message_id = bubble.get_attribute("data-mid")
+def messageIdtoMap(driver, message_id):
+    message = driver.find_element(By.XPATH, '//div[@data-mid="'+str(message_id)+'"]')
+    chatbox = message.find_elements(By.CLASS_NAME, "bubble-content-wrapper")
+    day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
+    try:
+        map=day.find_element(By.CLASS_NAME, "message")
+    except:
+        return "Error in find_message"
+    else:
+        return map
+    
