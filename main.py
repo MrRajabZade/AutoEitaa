@@ -107,6 +107,9 @@ def chat_id(driver):
     return str(chat_id)
 
 def send_message(driver, chat_id, text):
+    text = str(text)
+    text = text.replace('""', '')
+    text = text.replace("\n", "\\n")
     driver.execute_script('appMessagesManager.sendText('+str(chat_id)+', "'+str(text)+'")')
     try:
         text2, name, Codelanguage, message_id, map = onchatupdate(driver)
