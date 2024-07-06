@@ -1,11 +1,7 @@
 from requests import *
-from bs4 import BeautifulSoup
 from time import *
-import json
 from sys import *
 import os
-import json
-import datetime
 from langdetect import detect
 from io import BytesIO
 import win32clipboard
@@ -14,13 +10,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.service import Service
-from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver import ActionChains
 
 def start(nameBrowser):
@@ -103,8 +94,8 @@ def isContact(driver, chat_id):
 
 def chat_id(driver):
     chat = driver.find_element(By.CSS_SELECTOR, "div.user-title > span:nth-child(1)")
-    chat_id = chat.get_attribute("data-peer-id")
-    return str(chat_id)
+    chatid = chat.get_attribute("data-peer-id")
+    return str(chatid)
 
 def send_message(driver, chat_id, text):
     text = str(text)
@@ -455,18 +446,13 @@ def delete_chat(driver):
 def edit_about(driver, chat_id, text):
     driver.execute_script('appChatsManager.editAbout('+str(chat_id)+', "'+str(text)+'")')
 
-def onsubtitlechat(driver, x):
-    chat = driver.find_element(By.CSS_SELECTOR, "div.chatlist-parts:nth-child("+str(x)+") > div:nth-child(1) > ul:nth-child(2) > li:nth-child(1)")
+def onsubtitlechat(driver, x, y):
+    chat = driver.find_element(By.CSS_SELECTOR, "div.chatlist-parts:nth-child("+str(x)+") > div:nth-child(1) > ul:nth-child(2) > li:nth-child("+str(y)+")")
     chatid = chat.get_attribute("data-peer-id")
     cp = chat.find_element(By.CLASS_NAME, "user-caption")
     sub = cp.find_element(By.CLASS_NAME, "dialog-subtitle")
-    try:
-        bubble = sub.find_element(By.CLASS_NAME, "dialog-subtitle-badge")
-    except:
-        return None
-    else:
-        subtitle = sub.find_element(By.CLASS_NAME, "user-last-message").text
-        return str(subtitle), str(chatid)
+    subtitle = sub.find_element(By.CLASS_NAME, "user-last-message").text
+    return str(subtitle), str(chatid)
 
 def get_message(driver, message_id):
     message = driver.find_element(By.XPATH, '//div[@data-mid="'+str(message_id)+'"]')
@@ -493,3 +479,54 @@ def messageIdtoMap(driver, message_id):
     else:
         return map
     
+def add_cantact(driver, num, name):
+    menu = driver.find_element(By.CSS_SELECTOR, "#new-menu")
+    menu.click()
+    newchannel = driver.find_element(By.CSS_SELECTOR, ".tgico-newprivate")
+    newchannel.click()
+    sleep(1)
+    bo2 = driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(3) > div:nth-child(1)")
+    bo2.click()
+    num = str(num)
+    if num[0] == "0":
+        num = "98" + num[2:]
+    elif num[0] == "+":
+        num = num.replace("+", "")
+    elif num[0] == "9":
+        bo2 = driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(3) > div:nth-child(1)")
+        try:
+            bo2.click()
+        except:
+            p =1
+        te = driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(3) > div:nth-child(1)")
+        te.send_keys(Keys.CONTROL + 'a')
+        te.send_keys(Keys.BACKSPACE)
+        te.send_keys(num)
+        te1 = driver.find_element(By.CSS_SELECTOR, ".name-fields > div:nth-child(1) > div:nth-child(1)")
+        te1.send_keys(Keys.CONTROL + 'a')
+        te1.send_keys(Keys.BACKSPACE)
+        te1.send_keys(name)
+        bo3 = driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(3)")
+        bo3.click()
+        sleep(1)
+        try:
+            rr = driver.find_element(By.CSS_SELECTOR, ".toast")
+        except:
+            te3 = driver.find_element(By.CSS_SELECTOR, "#contacts-container > div:nth-child(1) > div:nth-child(2) > input:nth-child(1)")
+            te3.send_keys(Keys.CONTROL + 'a')
+            te3.send_keys(Keys.BACKSPACE)
+            sleep(1)
+            te3.send_keys(name)
+            sleep(1)
+            try:
+                rr = driver.find_element(By.CSS_SELECTOR, "#contacts > li:nth-child(1)")
+            except:
+                return
+            chatid = rr.get_attribute("data-peer-id")
+            return str(chatid)
+    else:
+        return
+        
+def go_chat(driver, id):
+    driver.get("https://web.eitaa.com/#"+str(id))
+    sleep(3)
