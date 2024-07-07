@@ -489,7 +489,7 @@ def add_cantact(driver, num, name):
     bo2.click()
     num = str(num)
     if num[0] == "0":
-        num = "98" + num[2:]
+        num = "98" + num[1:]
     elif num[0] == "+":
         num = num.replace("+", "")
     elif num[0] == "9":
