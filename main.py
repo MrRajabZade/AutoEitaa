@@ -488,11 +488,13 @@ def add_cantact(driver, num, name):
     bo2 = driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(3) > div:nth-child(1)")
     bo2.click()
     num = str(num)
-    if num[0] == "0":
+    if num[0:3] == "098":
+        num = "98" + num[1:]
+    elif num[0] == "0":
         num = "98" + num[1:]
     elif num[0] == "+":
         num = num.replace("+", "")
-    elif num[0] == "9":
+    elif num[0:2] == "98":
         bo2 = driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(3) > div:nth-child(1)")
         try:
             bo2.click()
