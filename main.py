@@ -46,6 +46,9 @@ def copy_to_clipboard(file_name):
     command = f"powershell Set-Clipboard -LiteralPath {file_name}"
     os.system(command)
 
+def scroll(label):
+    label.send_keys(Keys.PAGE_DOWN)
+
 def send_to_clipboard(clip_type, data):
     win32clipboard.OpenClipboard()
     win32clipboard.EmptyClipboard()
@@ -532,3 +535,36 @@ def add_cantact(driver, num, name):
 def go_chat(driver, id):
     driver.get("https://web.eitaa.com/#"+str(id))
     sleep(3)
+
+def load_all_cantact(driver, x):
+    n = 1
+    chatids = []
+    for i in range(int(x)):
+        try:
+            cantact = driver.find_element("#contacts > li:nth-child("+str(n)+")")
+        except:
+            driver.execute_script("window.scrollTo(0,document.body.scrollHeight)")
+            continue
+        chatid = cantact.get_attribute("data-peer-id")
+        chatids.append(str(chat_id))
+
+def go_settings(driver):
+    t = driver.find_element(By.CSS_SELECTOR, "div.btn-icon:nth-child(2)")
+    t.click()
+    t2 = driver.find_element(By.CSS_SELECTOR, ".tgico-settings")
+    t2.click()
+    sleep(1)
+
+def edit_my_about(driver, text):
+        t3 = driver.find_element(By.CSS_SELECTOR, "button.tgico-edit:nth-child(3)")
+        t3.click()
+        sleep(0.2)
+        bio = driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(3) > div:nth-child(1)")
+        bio.send_keys(Keys.CONTROL + 'a')
+        bio.send_keys(Keys.BACKSPACE)
+        bio.send_keys(str(text))
+        sleep(0.2)
+        t4 = driver.find_element(By.CSS_SELECTOR, "button.tgico-check")
+        t4.click()
+        sleep(0.2)
+        
