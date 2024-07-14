@@ -557,16 +557,20 @@ def go_settings(driver):
 
 def edit_my_about(driver, text):
         sleep(0.2)
-        t3 = driver.find_element(By.CSS_SELECTOR, "button.tgico-edit:nth-child(3)")
         try:
+            t3 = driver.find_element(By.CSS_SELECTOR, "button.tgico-edit:nth-child(3)")
             t3.click()
         except:
             d = 0
-        bio = driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(3) > div:nth-child(1)")
-        bio.send_keys(Keys.CONTROL + 'a')
-        bio.send_keys(Keys.BACKSPACE)
-        bio.send_keys(str(text))
-        t4 = driver.find_element(By.CSS_SELECTOR, "button.tgico-check")
-        sleep(0.2)
-        t4.click()
+        try:
+            bio = driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(3) > div:nth-child(1)")
+            bio.send_keys(Keys.CONTROL + 'a')
+            bio.send_keys(Keys.BACKSPACE)
+            bio.send_keys(str(text))
+            t4 = driver.find_element(By.CSS_SELECTOR, "button.tgico-check")
+            sleep(0.2)
+            t4.click()
+        except:
+            t5 = driver.find_element(By.CSS_SELECTOR, "div.sidebar-slider-item:nth-child(2) > div:nth-child(1) > button:nth-child(1)")
+            t5.click()
         
