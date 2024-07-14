@@ -562,18 +562,34 @@ def edit_my_about(driver, text):
             t3.click()
         except:
             sleep(0.2)
-            t3.click()
+            try:
+                t3.click()
+            except:
+                d = 0
         bio = driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(3) > div:nth-child(1)")
         sleep(0.2)
         try:
             bio.send_keys(Keys.CONTROL + 'a')
         except:
             sleep(0.2)
-            bio.send_keys(Keys.CONTROL + 'a')
-        bio.send_keys(Keys.BACKSPACE)
-        bio.send_keys(str(text))
-        sleep(0.2)
+            try:
+                bio.send_keys(Keys.CONTROL + 'a')
+            except:
+                return
+        try:
+            bio.send_keys(Keys.BACKSPACE)
+            bio.send_keys(str(text))
+        except:
+            return
         t4 = driver.find_element(By.CSS_SELECTOR, "button.tgico-check")
-        t4.click()
+        sleep(0.2)
+        try:
+            t4.click()
+        except:
+            sleep(0.2)
+            try:
+                t4.click()
+            except:
+                return
         sleep(0.2)
         
