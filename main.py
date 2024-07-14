@@ -557,10 +557,19 @@ def go_settings(driver):
 
 def edit_my_about(driver, text):
         t3 = driver.find_element(By.CSS_SELECTOR, "button.tgico-edit:nth-child(3)")
-        t3.click()
         sleep(0.2)
+        try:
+            t3.click()
+        except:
+            sleep(0.2)
+            t3.click()
         bio = driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(3) > div:nth-child(1)")
-        bio.send_keys(Keys.CONTROL + 'a')
+        sleep(0.2)
+        try:
+            bio.send_keys(Keys.CONTROL + 'a')
+        except:
+            sleep(0.2)
+            bio.send_keys(Keys.CONTROL + 'a')
         bio.send_keys(Keys.BACKSPACE)
         bio.send_keys(str(text))
         sleep(0.2)
