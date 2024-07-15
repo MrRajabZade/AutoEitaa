@@ -571,4 +571,31 @@ def edit_my_about(driver, text):
         t4.click()
         t5 = driver.find_element(By.CSS_SELECTOR, "div.sidebar-slider-item:nth-child(2) > div:nth-child(1) > button:nth-child(1)")
         t5.click()
-        
+
+def get_members(driver):
+    tab_bar = driver.find_element(By.CSS_SELECTOR, "div.sidebar-header:nth-child(2)")
+    tab_bar.click()
+    sleep(1)
+    
+    try:
+        tigo_edit = driver.find_element(By.CSS_SELECTOR, "button.tgico-edit")
+        tigo_edit.click()
+    except:
+        return
+    sleep(1)
+
+    t = driver.find_element(By.CSS_SELECTOR, "div.sidebar-slider-item:nth-child(2) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)")
+    t.click()
+    sleep(1)
+
+    n = 1
+    members = []
+
+    while True:
+        try:
+            t2 = driver.find_element(By.XPATH, "/html/body/div[2]/div/div[3]/div/div[3]/div[2]/div[2]/div/div/ul/li["+str(n)+"]")
+        except:
+            return members
+        chatid = t2.get_attribute("data-peer-id")
+        members.append(str(chatid))
+        n+=1 
