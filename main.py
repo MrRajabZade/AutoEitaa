@@ -3,9 +3,9 @@ from time import *
 from sys import *
 import os
 from langdetect import detect
-from io import BytesIO
 import win32clipboard
 from PIL import Image
+from io import BytesIO
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
@@ -60,13 +60,6 @@ def isMessageNew(msg1, msg2):
         return False
     else:
         return True
-    
-def detect_language(text):
-    try:
-        language = detect(text)
-        return language
-    except:
-        return "Unable to detect the language."
     
 def canSendToUser(driver, chat_id):
     r = driver.execute_script("appUsersManager.canSendToUser("+str(chat_id)+")")
@@ -212,7 +205,7 @@ def delete_message(driver, message):
     action.perform()
     sleep(1)
     try:
-        deletebox = driver.find_element(By.CSS_SELECTOR, 'div.btn-menu-item:nth-child(25) > div:nth-child(1)')
+        deletebox = driver.find_element(By.CSS_SELECTOR, 'div.btn-menu-item:nth-child(26)')
     except:
         return "Error in find_delete"
     try:
@@ -260,9 +253,10 @@ def on_message(driver, x):
     except:
         return None
     else:
-        chat_id = str(chat.get_attribute('data-peer-id'))
+        chatid = str(chat.get_attribute('data-peer-id'))
         chat.click()
-        sleep(3)
+        chat.click()
+        sleep(5)
         for y in range(1, int(int(bubbletext)+1)):
             x = int(str("-"+str(y)))
             bubble = driver.find_element(By.CLASS_NAME, "bubble")[int(x)]
@@ -275,12 +269,12 @@ def on_message(driver, x):
                 map=day.find_element(By.CLASS_NAME, "message")
             except:
                 return "Error in find_message"
+            time = map.find_element(By.TAG_NAME, "span").get_attribute("title")
             text = str(map.text)
-            Codelanguage = detect_language(text)
-            return str(text), str(name), str(Codelanguage), str(message_id), map
+            return str(text), str(name), str(time), str(message_id), map, chatid
 
 def get_info(driver, chat_id):
-    s = driver.find_element(By.CSS_SELECTOR, "div.sidebar-header:nth-child(2)")
+    s = driver.find_elmement(By.CSS_SELECTOR, "div.sidebar-header:nth-child(2)")
     s.click()
     sleep(1)
     try:
@@ -401,9 +395,15 @@ def onchatupdate(driver):
         return False
     else:
         text = str(map.text)
-        name = driver.find_element(By.CSS_SELECTOR, "div.user-title > span:nth-child(1) > span:nth-child(1)").text
-        Codelanguage = detect_language(text)
-        return str(text), str(name), str(Codelanguage), str(message_id), map
+        time_tgico = map.find_element(By.TAG_NAME, "span").get_attribute("title")
+        try:
+            name = day.find_element(By.CLASS_NAME, "name")
+        except:
+            return str(text), str(time_tgico), str(message_id), map
+        else:
+            chatid = name.get_attribute("data-peer-id")
+            name = name.find_element(By.CLASS_NAME, "peer-title").text
+        return str(text), str(name), str(time_tgico), str(message_id), str(chatid), map
 
 def driver_command(text, command):
     command = "//" + str(command)
@@ -468,8 +468,7 @@ def get_message(driver, message_id):
     except:
         return "Error in find_message"
     text = str(map.text)
-    Codelanguage = detect_language(text)
-    return str(text), str(name), str(Codelanguage), str(message_id), map
+    return str(text), str(name), str(message_id), map
 
 def messageIdtoMap(driver, message_id):
     message = driver.find_element(By.XPATH, '//div[@data-mid="'+str(message_id)+'"]')
@@ -555,6 +554,14 @@ def go_settings(driver):
     t2.click()
     sleep(1)
 
+def go_edit_chat(driver):
+    try:
+        tigo_edit = driver.find_element(By.CSS_SELECTOR, "button.tgico-edit")
+        tigo_edit.click()
+    except:
+        return
+    sleep(1)
+    
 def edit_my_about(driver, text):
         sleep(0.2)
         try:
@@ -562,6 +569,7 @@ def edit_my_about(driver, text):
             t3.click()
         except:
             d = 0
+        sleep(0.2)
         bio = driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(3) > div:nth-child(1)")
         bio.send_keys(Keys.CONTROL + 'a')
         bio.send_keys(Keys.BACKSPACE)
@@ -569,25 +577,18 @@ def edit_my_about(driver, text):
         t4 = driver.find_element(By.CSS_SELECTOR, "button.tgico-check")
         sleep(0.2)
         t4.click()
-        t5 = driver.find_element(By.CSS_SELECTOR, "div.sidebar-slider-item:nth-child(2) > div:nth-child(1) > button:nth-child(1)")
-        t5.click()
 
-def get_members(driver):
-    tab_bar = driver.find_element(By.CSS_SELECTOR, "div.sidebar-header:nth-child(2)")
+def go_sidebar_chat(driver):
+    tab_bar = driver.find_element(By.CSS_SELECTOR, ".content")
     tab_bar.click()
     sleep(1)
-    
-    try:
-        tigo_edit = driver.find_element(By.CSS_SELECTOR, "button.tgico-edit")
-        tigo_edit.click()
-    except:
-        return
-    sleep(1)
 
+def go_members(driver):
     t = driver.find_element(By.CSS_SELECTOR, "div.sidebar-slider-item:nth-child(2) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2)")
     t.click()
     sleep(1)
 
+def get_members(driver, id):
     n = 1
     members = []
 
@@ -595,7 +596,119 @@ def get_members(driver):
         try:
             t2 = driver.find_element(By.XPATH, "/html/body/div[2]/div/div[3]/div/div[3]/div[2]/div[2]/div/div/ul/li["+str(n)+"]")
         except:
-            return members
+            if map:
+                return members, map
+            else:
+                return members
         chatid = t2.get_attribute("data-peer-id")
+        if id:
+            if id == chatid:
+                map = t2
         members.append(str(chatid))
         n+=1 
+
+def get_admins(driver, id):
+    n = 1
+    members = []
+
+    while True:
+        try:
+            t2 = driver.find_element(By.XPATH, "/html/body/div[2]/div[1]/div[3]/div/div[3]/div[2]/div[2]/div/div/ul/li["+str(n)+"]")
+        except:
+            if map:
+                return members, map
+            else:
+                return members
+        chatid = t2.get_attribute("data-peer-id")
+        if id:
+            if id == chatid:
+                map = t2
+        members.append(str(chatid))
+        n+=1 
+
+def add_memeber(driver, target):
+    t2 = driver.find_element(By.CSS_SELECTOR, "button.is-visible")
+    t2.click()
+    sleep(1)
+
+    for i in target:
+        t3 = driver.find_element(By.CSS_SELECTOR, ".selector-search-input")
+        t3.send_keys(str(i))
+        sleep(1)
+
+        t4 = driver.find_element(By.CSS_SELECTOR, "div.chatlist-container:nth-child(3) > div:nth-child(1) > ul:nth-child(1) > li:nth-child(1)")
+        t4.click()
+        sleep(1)
+
+    t5 = driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(1)")
+    t5.click()
+    sleep(1)
+
+    t6 = driver.find_element(By.CSS_SELECTOR, "button.btn:nth-child(1)")
+    t6.click()
+
+def promote_member(driver, map, n):
+    map.click()
+    try:
+        t = driver.find_element(By.CSS_SELECTOR, ".tgico-promote").click()
+    except:
+        return
+    sleep(1)
+
+    for i in n:
+        i += 3
+        t2 = driver.find_element(By.CSS_SELECTOR, "label.row:nth-child("+str(i)+") > div:nth-child(3) > div:nth-child(2) > label:nth-child(1) > div:nth-child(2)")
+        if i < 10:
+            t2.click().click()
+        elif i == 10:
+            t2.click()
+        else:
+            return
+    t3 = driver.find_element(By.CSS_SELECTOR, "div.sidebar-slider-item:nth-child(4) > div:nth-child(1) > button:nth-child(1)")
+    t3.click()
+    sleep(1)
+
+def delete_member(driver, map):
+    map.click()
+    try:
+        t = driver.find_element(By.CSS_SELECTOR, "div.tgico-delete:nth-child(3)").click()
+    except:
+        return
+
+def edit_admin_rights(driver, map, n):
+    map.click()
+    try:
+        t = driver.find_element(By.CSS_SELECTOR, "div.tgico-admin:nth-child(2)").click()
+    except:
+        return
+    sleep(1)
+
+    for i in n:
+        i += 3
+        t2 = driver.find_element(By.CSS_SELECTOR, "label.row:nth-child("+str(i)+") > div:nth-child(3) > div:nth-child(2) > label:nth-child(1) > div:nth-child(2)")
+        if i < 10:
+            t2.click().click()
+        elif i == 10:
+            t2.click()
+        else:
+            return
+    t3 = driver.find_element(By.CSS_SELECTOR, "div.sidebar-slider-item:nth-child(4) > div:nth-child(1) > button:nth-child(1)")
+    t3.click()
+    sleep(1)
+
+def go_administrators(driver):
+    t = driver.find_element(By.CSS_SELECTOR, "div.sidebar-slider-item:nth-child(2) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1)")
+    t.click()
+    sleep(1)
+
+def delete_admin(driver, map):
+    map.click()
+    try:
+        t = driver.find_element(By.CSS_SELECTOR, "div.tgico-admin:nth-child(2)").click()
+    except:
+        return
+    
+    t2 = driver.find_element(By.CSS_SELECTOR, "button.tgico-deleteuser")
+    t2.click()
+
+
