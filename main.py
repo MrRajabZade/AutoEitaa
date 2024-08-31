@@ -97,8 +97,29 @@ class Bot:
             return True
         else:
             return False
+
+    def isAnyGroup(self, chat_id):
+        r = self.driver.execute_script("return appPeersManager.isAnyGroup("+str(chat_id)+");")
+        if str(r) == "true":
+            return True
+        else:
+            return False
         
-    # appMessagesManager.canDeleteMessage
+    def isUser(self, chat_id):
+        if str(chat_id[0]) == "-":
+            return False
+        else:
+            return True
+        
+    # appPeersManager.getPeerSearchText
+
+    def getPeerSearchText(self, chat_id):
+        r = self.driver.execute_script("return appPeersManager.getPeerSearchText("+str(chat_id)+");")
+        return str(r)
+
+    def getPeer(self, chat_id): 
+        r = self.driver.execute_script("return appPeersManager.getPeer("+str(chat_id)+");")
+        return str(r)
 
     def canPinMessage(self, msg_id):
         r = self.driver.execute_script("return appPeersManager.canPinMessage("+str(msg_id)+");")
@@ -133,8 +154,8 @@ class Bot:
             return False
         
     def back(self):
-        r = self.driver.execute_script("appNavigationController.back()")
-        
+        self.driver.execute_script("appNavigationController.back()")
+
     def get_currentHash(self): 
         r = self.driver.execute_script("return appNavigationController.currentHash;")
         return str(r)
@@ -321,6 +342,27 @@ class Bot:
                     map=day.find_element(By.CLASS_NAME, "message")
                 except:
                     return "Error in find_message"
+                try:
+                    attachment = day.find_element(By.CLASS_NAME, "attachment")
+                except:
+                    media = False
+                else:
+                    media = attachment.find_element(By.CLASS_NAME, "media-photo")
+                    media = media.get_attribute("src")
+                    try:
+                        video_time = attachment.find_element(By.CLASS_NAME, "video-time")
+                    except:
+                        is_video = False
+                    else:
+                        is_video = True
+                        video_time = str(video_time.text)
+                try:
+                    reply = day.find_element(By.CLASS_NAME, "reply")
+                except:
+                    reply = False
+                else:
+                    reply = reply.find_element(By.CLASS_NAME, "reply-content")
+                    reply = reply.get_attribute("innerHTML")
                 time_tgico = map.find_element(By.TAG_NAME, "span")
                 time_inner = time_tgico.find_element(By.CLASS_NAME, "inner").get_attribute("innerHTML").split("</span>")[1]
                 if str(time_inner) == "":
@@ -329,8 +371,11 @@ class Bot:
                     is_message_me = True
                 time = time_tgico.get_attribute("title")
                 text = str(map.text)
-                return str(text), str(name), str(time), str(message_id), map, chatid, is_message_me
-
+                if is_video:
+                    return str(text), str(name), str(time), str(message_id), str(chatid), map, is_message_me, reply, is_video, video_time, media
+                else:
+                    return str(text), str(name), str(time), str(message_id), str(chatid), map, is_message_me, reply, is_video, media
+        
     def get_info(self, chat_id):
         s = self.driver.find_element(By.CSS_SELECTOR, "div.sidebar-header:nth-child(2)")
         s.click()
@@ -453,6 +498,27 @@ class Bot:
             return False
         else:
             text = str(map.text)
+            try:
+                attachment = day.find_element(By.CLASS_NAME, "attachment")
+            except:
+                media = False
+            else:
+                media = attachment.find_element(By.CLASS_NAME, "media-photo")
+                media = media.get_attribute("src")
+                try:
+                    video_time = attachment.find_element(By.CLASS_NAME, "video-time")
+                except:
+                    is_video = False
+                else:
+                    is_video = True
+                    video_time = str(video_time.text)
+            try:
+                reply = day.find_element(By.CLASS_NAME, "reply")
+            except:
+                reply = False
+            else:
+                reply = reply.find_element(By.CLASS_NAME, "reply-content")
+                reply = reply.get_attribute("innerHTML")
             time_tgico = map.find_element(By.TAG_NAME, "span")
             time_inner = time_tgico.find_element(By.CLASS_NAME, "inner").get_attribute("innerHTML").split("</span>")[1]
             if str(time_inner) == "":
@@ -463,12 +529,18 @@ class Bot:
             try:
                 name = day.find_element(By.CLASS_NAME, "name")
             except:
-                return str(text), str(time), str(message_id), map, is_message_me
+                if is_video:
+                    return str(text), str(time), str(message_id), map, is_message_me, reply, is_video, video_time, media
+                else:
+                    return str(text), str(time), str(message_id), map, is_message_me, reply, is_video, media
             else:
                 chatid = name.get_attribute("data-peer-id")
                 name = name.find_element(By.CLASS_NAME, "peer-title").text
-            return str(text), str(name), str(time), str(message_id), str(chatid), map, is_message_me
-
+            if is_video:
+                return str(text), str(name), str(time), str(message_id), str(chatid), map, is_message_me, reply, is_video, video_time, media
+            else:
+                return str(text), str(name), str(time), str(message_id), str(chatid), map, is_message_me, reply, is_video, media
+    
     def driver_command(text, command):
         command = "//" + str(command)
         if str(text) == str(command):
