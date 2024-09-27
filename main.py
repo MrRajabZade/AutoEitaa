@@ -12,34 +12,60 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver import ActionChains
+from colorama import Fore
 
 class Bot:
     def __init__(self, nameBrowser):
+        options = webdriver.FirefoxOptions()
+        options.add_argument('--headless') 
+
         nameBrowser = nameBrowser.lower()
         if str(nameBrowser) == "firefox":
-            self.driver = webdriver.Firefox()
+            self.driver = webdriver.Firefox(options=options)
         elif str(nameBrowser) == "chrome":
-            self.driver = webdriver.Chrome()
+            self.driver = webdriver.Chrome(options=options)
 
         try:
             self.driver.get("https://web.eitaa.com/")
         except:
-            return "Error in get_eitaa_web"
-        error = 0
-        status = 0
-        while(status==0):
+            return "Error in go_eitaa_web"
+        
+        while True:
             try:
-                search = self.driver.find_element(By.CSS_SELECTOR, '#main-search')
+                phone_input = self.driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(2) > div:nth-child(1)")
             except:
-                if int(error) == 0:
-                    print("Waiting for login...")
-                    error = 1
-                else:
-                    pass
+                continue
             else:
-                status = 1
+                phone = input("What's your "+Fore.GREEN+"phone number"+Fore.WHITE+" for login in Eitaa? +")
+                phone_input.send_keys(Keys.CONTROL + 'a')
+                phone_input.send_keys(Keys.BACKSPACE)
+                phone_input.send_keys(str(phone))
+                self.driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(4)").click()
+                break
+        while True:
+            try:
+                code_input = self.driver.find_element(By.CSS_SELECTOR, "input.input-field-input")
+            except:
+                continue
+            else:
+                Otp_code = input("What's The "+Fore.GREEN+"OTP Code"+Fore.WHITE+" Sent you in Eitaa or sms?")
+                code_input.send_keys(str(Otp_code))
+                sleep(4)
+            status = self.driver.find_element(By.XPATH, "/html/body/div[1]/div/div[2]/div[3]/div/div[3]/div/label/span")
+            if str(status.text) == "کد نامعتبر است":
+                Otp_code = input("OTP code is wrong try again\nWhat's The "+Fore.GREEN+"OTP Code"+Fore.WHITE+" Sent you in Eitaa or sms?")
+            else:
+                break
+        while True:
+            try:
+                self.driver.find_element(By.CSS_SELECTOR, '#main-search')
+            except:
+                print("Waithing...", end="\r")
+                continue
+            else:
                 os.system('cls')
-        sleep(15.5)
+                sleep(15.5)
+                break
 
     def copy_to_clipboard(self, file_name):
         command = f"powershell Set-Clipboard -LiteralPath {file_name}"
@@ -119,6 +145,12 @@ class Bot:
 
     def getPeer(self, chat_id): 
         r = self.driver.execute_script("return appPeersManager.getPeer("+str(chat_id)+");")
+        return str(r)
+    
+    # appPeersManager.getDialogType
+
+    def getDialogType(self, chat_id): 
+        r = self.driver.execute_script("return appPeersManager.getDialogType("+str(chat_id)+");")
         return str(r)
 
     def canPinMessage(self, msg_id):
@@ -332,12 +364,18 @@ class Bot:
             sleep(5)
             for y in range(1, int(int(bubbletext)+1)):
                 x = int(str("-"+str(y)))
-                bubble = self.driver.find_element(By.CLASS_NAME, "bubble")[int(x)]
+                bubble = self.driver.find_elements(By.CLASS_NAME, "bubble")[int(x)]
                 message_id = bubble.get_attribute("data-mid")
                 chatbox = bubble.find_elements(By.CLASS_NAME, "bubble-content-wrapper")
                 day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
                 namebox = day.find_element(By.CLASS_NAME, "name")
-                name = namebox.find_element(By.CLASS_NAME, "peer-title").text
+                name = self.driver.find_element(By.CSS_SELECTOR, "div.user-title > span:nth-child(1)")
+                if str(namebox.get_attribute('data-peer-id')) == str(chatid):
+                    is_from = False
+                else:
+                    is_from = True
+                    chatid_from = str(namebox.get_attribute('data-peer-id'))
+                    name_from = namebox.find_element(By.CLASS_NAME, "peer-title").text
                 try:
                     map=day.find_element(By.CLASS_NAME, "message")
                 except:
@@ -366,16 +404,48 @@ class Bot:
                 time_tgico = map.find_element(By.TAG_NAME, "span")
                 time_inner = time_tgico.find_element(By.CLASS_NAME, "inner").get_attribute("innerHTML").split("</span>")[1]
                 if str(time_inner) == "":
-                    is_message_me = False
+                    is_from_me = False
                 else:
-                    is_message_me = True
+                    is_from_me = True
                 time = time_tgico.get_attribute("title")
                 text = str(map.text)
+                response = {
+                    "result":{
+                        "message_id":str(message_id),
+                        "chat":{
+                            "id":str(chatid),
+                            "title":str(name),
+                            "username":str(self.getPeerUsername(chatid)),
+                            "type":str(self.getDialogType(chatid))
+                        },
+                    }
+                }
+                if media:
+                    response["result"]["media"] = {
+                        "media-src": str(media),
+                    }
                 if is_video:
-                    return str(text), str(name), str(time), str(message_id), str(chatid), map, is_message_me, reply, is_video, video_time, media
-                else:
-                    return str(text), str(name), str(time), str(message_id), str(chatid), map, is_message_me, reply, is_video, media
-        
+                    response["result"]["media"]["video"] = {
+                        "video-time":str(video_time)
+                    }
+                if is_from:
+                    response["result"]["from"] = {
+                        "is_from_me":is_from_me,
+                        "id":str(chatid_from),
+                        "name":str(name_from),
+                        "username":str(self.getPeerUsername(chatid_from)),
+                        "type":str(self.getDialogType(chatid_from))
+                    }
+                if reply:
+                    response["result"]["reply"] = {
+                        "reply-content": str(reply)
+                    }
+                response["result"] = {
+                    "date":str(time),
+                    "text":str(text)
+                }
+                return response
+
     def get_info(self, chat_id):
         s = self.driver.find_element(By.CSS_SELECTOR, "div.sidebar-header:nth-child(2)")
         s.click()
