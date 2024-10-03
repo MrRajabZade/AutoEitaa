@@ -13,6 +13,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver import ActionChains
 from colorama import Fore
+import threading
 
 class Bot:
     def __init__(self, nameBrowser):
@@ -48,20 +49,20 @@ class Bot:
             except:
                 continue
             else:
-                Otp_code = input("What's The "+Fore.GREEN+"OTP Code"+Fore.WHITE+" Sent you in Eitaa or sms?")
+                Otp_code = input("What's The "+Fore.GREEN+"OTP Code"+Fore.WHITE+" Sent you in Eitaa or sms? ")
                 code_input.send_keys(str(Otp_code))
-                sleep(4)
-            status = self.driver.find_element(By.XPATH, "/html/body/div[1]/div/div[2]/div[3]/div/div[3]/div/label/span")
-            if str(status.text) == "کد نامعتبر است":
-                Otp_code = input("OTP code is wrong try again\nWhat's The "+Fore.GREEN+"OTP Code"+Fore.WHITE+" Sent you in Eitaa or sms?")
-            else:
                 break
         while True:
             try:
                 self.driver.find_element(By.CSS_SELECTOR, '#main-search')
             except:
-                print("Waithing...", end="\r")
-                continue
+                status = self.driver.find_element(By.XPATH, "/html/body/div[1]/div/div[2]/div[3]/div/div[3]/div/label/span")
+                if str(status.text) == "کد نامعتبر است":
+                    Otp_code = input("OTP code is wrong try again!")
+                    exit()
+                else:     
+                    print("Waithing...", end="\r")
+                    continue
             else:
                 os.system('cls')
                 sleep(15.5)
@@ -198,6 +199,8 @@ class Bot:
         return str(chatid)
 
     def send_message(self, chat_id, text):
+        global message_sent
+        message_sent = True
         text = str(text)
         text = text.replace('""', '')
         text = text.replace("\n", "\\n")
@@ -359,23 +362,36 @@ class Bot:
             return None
         else:
             chatid = str(chat.get_attribute('data-peer-id'))
+            sleep(2)
             chat.click()
+            sleep(10)
             chat.click()
-            sleep(5)
+            sleep(1)
+            response = {}
+            print(str(bubbletext))
             for y in range(1, int(int(bubbletext)+1)):
                 x = int(str("-"+str(y)))
-                bubble = self.driver.find_elements(By.CLASS_NAME, "bubble")[int(x)]
+                try:
+                    bubble = self.driver.find_elements(By.CLASS_NAME, "bubble")[int(x)]
+                except:
+                    self.go_chat(chatid)
+                    sleep(10)
+                    try:
+                       bubble = self.driver.find_elements(By.CLASS_NAME, "bubble")[int(x)]
+                    except: 
+                        continue
                 message_id = bubble.get_attribute("data-mid")
-                chatbox = bubble.find_elements(By.CLASS_NAME, "bubble-content-wrapper")
+                chatbox = bubble.find_element(By.CLASS_NAME, "bubble-content-wrapper")
                 day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
-                namebox = day.find_element(By.CLASS_NAME, "name")
-                name = self.driver.find_element(By.CSS_SELECTOR, "div.user-title > span:nth-child(1)")
-                if str(namebox.get_attribute('data-peer-id')) == str(chatid):
+                try:
+                    namebox = day.find_element(By.CLASS_NAME, "name")
+                except:
                     is_from = False
                 else:
                     is_from = True
                     chatid_from = str(namebox.get_attribute('data-peer-id'))
                     name_from = namebox.find_element(By.CLASS_NAME, "peer-title").text
+                name = self.driver.find_element(By.CSS_SELECTOR, "div.user-title > span:nth-child(1)").text
                 try:
                     map=day.find_element(By.CLASS_NAME, "message")
                 except:
@@ -409,8 +425,8 @@ class Bot:
                     is_from_me = True
                 time = time_tgico.get_attribute("title")
                 text = str(map.text)
-                response = {
-                    "result":{
+                response2 = {
+                    "result"+str(x):{
                         "message_id":str(message_id),
                         "chat":{
                             "id":str(chatid),
@@ -421,30 +437,44 @@ class Bot:
                     }
                 }
                 if media:
-                    response["result"]["media"] = {
-                        "media-src": str(media),
+                    new_data = {
+                        "media":{
+                            "media-src": str(media)
+                        }
                     }
-                if is_video:
-                    response["result"]["media"]["video"] = {
-                        "video-time":str(video_time)
-                    }
+                    response2["result"+str(x)].update(new_data)
+                    if is_video:
+                        new_data = {
+                            "video":{
+                                "video-time":str(video_time)
+                            }
+                        }
+                        response2["result"+str(x)]["media"].update(new_data)
                 if is_from:
-                    response["result"]["from"] = {
-                        "is_from_me":is_from_me,
-                        "id":str(chatid_from),
-                        "name":str(name_from),
-                        "username":str(self.getPeerUsername(chatid_from)),
-                        "type":str(self.getDialogType(chatid_from))
+                    new_data = {
+                        "from":{
+                            "is_from_me":is_from_me,
+                            "id":str(chatid_from),
+                            "name":str(name_from),
+                            "username":str(self.getPeerUsername(chatid_from)),
+                            "type":str(self.getDialogType(chatid_from))
+                        }
                     }
+                    response2["result"+str(x)].update(new_data)
                 if reply:
-                    response["result"]["reply"] = {
-                        "reply-content": str(reply)
+                    new_data = {
+                        "reply":{
+                            "reply-content": str(reply)
+                        }
                     }
-                response["result"] = {
+                    response2["result"+str(x)].update(new_data)
+                new_data = {
                     "date":str(time),
                     "text":str(text)
                 }
-                return response
+                response2["result"+str(x)].update(new_data)
+                response.update(response2)
+            return response
 
     def get_info(self, chat_id):
         s = self.driver.find_element(By.CSS_SELECTOR, "div.sidebar-header:nth-child(2)")
@@ -481,6 +511,24 @@ class Bot:
             'chat_id':str(chat_id),
         }
         return str(result)
+    
+    def sendChatActionThread(self):
+        global message_sent
+        message_sent = False
+        try:
+                map = self.driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
+        except:
+            return "Error in find_message_box"
+        while not message_sent:
+            map.send_keys()
+            map.send_keys(Keys.CONTROL + 'a')
+            map.send_keys(Keys.BACKSPACE)
+        print("sendChatAction is done.")
+
+    def sendChatAction(self, chatid):
+        self.go_chat(chatid)
+        thread = threading.Thread(target=self.sendChatActionThread)
+        thread.start()
 
     def getMe(api):
         req = get("https://eitaayar.ir/api/"+api+"/getMe")
@@ -756,7 +804,7 @@ class Bot:
             return
             
     def go_chat(self, id):
-        self.driver.get("#"+str(id))
+        self.driver.get("https://web.eitaa.com/#"+str(id))
         sleep(3)
 
     def load_all_contacts(self, x):
