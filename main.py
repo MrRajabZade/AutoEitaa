@@ -368,7 +368,6 @@ class Bot:
             chat.click()
             sleep(1)
             response = {}
-            print(str(bubbletext))
             for y in range(1, int(int(bubbletext)+1)):
                 x = int(str("-"+str(y)))
                 try:
