@@ -348,9 +348,20 @@ class Bot:
                 chat.click()
                 return message_id
 
-    def on_message(self, x):
+    def FindActiveFolderTabs(self):
+        elements = self.driver.find_element(By.CSS_SELECTOR, '.menu-horizontal-div .menu-horizontal-div-item.rp')
+
+        index = None
+        for i, el in enumerate(elements):
+            if 'active' in el.get_attribute('class'):
+                index = i + 1
+                break
+
+        return int(index)
+
+    def on_new_message(self, chat):
         try:
-            chat = self.driver.find_element(By.CSS_SELECTOR, "div.chatlist-parts:nth-child("+str(x)+") > div:nth-child(1) > ul:nth-child(2) > li:nth-child(1)")
+            chat = self.driver.find_element(By.CSS_SELECTOR, "li.chatlist-chat:nth-child("+str(chat)+")")
         except:
             return "not found chat"
         cp = chat.find_element(By.CLASS_NAME, "user-caption")
@@ -423,6 +434,10 @@ class Bot:
                 else:
                     is_from_me = True
                 time = time_tgico.get_attribute("title")
+                try:
+                    view_message = time_tgico.find_element(By.CLASS_NAME, "post-views").text
+                except:
+                    pass
                 text = str(map.text)
                 response2 = {
                     "result"+str(x):{
@@ -467,10 +482,17 @@ class Bot:
                         }
                     }
                     response2["result"+str(x)].update(new_data)
-                new_data = {
-                    "date":str(time),
-                    "text":str(text)
-                }
+                if view_message:
+                    new_data = {
+                        "date":str(time),
+                        "text":str(text),
+                        "view":str(view_message)
+                    }
+                else:
+                    new_data = {
+                        "date":str(time),
+                        "text":str(text)
+                    }
                 response2["result"+str(x)].update(new_data)
                 response.update(response2)
             return response
@@ -605,59 +627,121 @@ class Bot:
         send.click()
 
     def onchatupdate(self):
-        bubble = self.driver.find_elements(By.CLASS_NAME, "bubble")[-1]
+        chatid = self.chat_id()
+        try:
+            bubble = self.driver.find_elements(By.CLASS_NAME, "bubble")[-1]
+        except:
+            self.go_chat(chatid)
+            sleep(10)
+            try:
+               bubble = self.driver.find_elements(By.CLASS_NAME, "bubble")[-1]
+            except: 
+                return None
         message_id = bubble.get_attribute("data-mid")
         chatbox = bubble.find_element(By.CLASS_NAME, "bubble-content-wrapper")
         day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
         try:
+            namebox = day.find_element(By.CLASS_NAME, "name")
+        except:
+            is_from = False
+        else:
+            is_from = True
+            chatid_from = str(namebox.get_attribute('data-peer-id'))
+            name_from = namebox.find_element(By.CLASS_NAME, "peer-title").text
+        name = self.driver.find_element(By.CSS_SELECTOR, "div.user-title > span:nth-child(1)").text
+        try:
             map=day.find_element(By.CLASS_NAME, "message")
         except:
-            return False
+            return "Error in find_message"
+        try:
+            attachment = day.find_element(By.CLASS_NAME, "attachment")
+        except:
+            media = False
         else:
-            text = str(map.text)
+            media = attachment.find_element(By.CLASS_NAME, "media-photo")
+            media = media.get_attribute("src")
             try:
-                attachment = day.find_element(By.CLASS_NAME, "attachment")
+                video_time = attachment.find_element(By.CLASS_NAME, "video-time")
             except:
-                media = False
+                is_video = False
             else:
-                media = attachment.find_element(By.CLASS_NAME, "media-photo")
-                media = media.get_attribute("src")
-                try:
-                    video_time = attachment.find_element(By.CLASS_NAME, "video-time")
-                except:
-                    is_video = False
-                else:
-                    is_video = True
-                    video_time = str(video_time.text)
-            try:
-                reply = day.find_element(By.CLASS_NAME, "reply")
-            except:
-                reply = False
-            else:
-                reply = reply.find_element(By.CLASS_NAME, "reply-content")
-                reply = reply.get_attribute("innerHTML")
-            time_tgico = map.find_element(By.TAG_NAME, "span")
-            time_inner = time_tgico.find_element(By.CLASS_NAME, "inner").get_attribute("innerHTML").split("</span>")[1]
-            if str(time_inner) == "":
-                is_message_me = False
-            else:
-                is_message_me = True
-            time = time_tgico.get_attribute("title")
-            try:
-                name = day.find_element(By.CLASS_NAME, "name")
-            except:
-                if is_video:
-                    return str(text), str(time), str(message_id), map, is_message_me, reply, is_video, video_time, media
-                else:
-                    return str(text), str(time), str(message_id), map, is_message_me, reply, is_video, media
-            else:
-                chatid = name.get_attribute("data-peer-id")
-                name = name.find_element(By.CLASS_NAME, "peer-title").text
+                is_video = True
+                video_time = str(video_time.text)
+        try:
+            reply = day.find_element(By.CLASS_NAME, "reply")
+        except:
+            reply = False
+        else:
+            reply = reply.find_element(By.CLASS_NAME, "reply-content")
+            reply = reply.get_attribute("innerHTML")
+        time_tgico = map.find_element(By.TAG_NAME, "span")
+        time_inner = time_tgico.find_element(By.CLASS_NAME, "inner").get_attribute("innerHTML").split("</span>")[1]
+        if str(time_inner) == "":
+            is_from_me = False
+        else:
+            is_from_me = True
+        time = time_tgico.get_attribute("title")
+        try:
+            view_message = time_tgico.find_element(By.CLASS_NAME, "post-views").text
+        except:
+            pass
+        text = str(map.text)
+        response2 = {
+            "result":{
+                "message_id":str(message_id),
+                "chat":{
+                    "id":str(chatid),
+                    "title":str(name),
+                    "username":str(self.getPeerUsername(chatid)),
+                    "type":str(self.getDialogType(chatid))
+                },
+            }
+        }
+        if media:
+            new_data = {
+                "media":{
+                    "media-src": str(media)
+                }
+            }
+            response2["result"].update(new_data)
             if is_video:
-                return str(text), str(name), str(time), str(message_id), str(chatid), map, is_message_me, reply, is_video, video_time, media
+                new_data = {
+                    "video":{
+                        "video-time":str(video_time)
+                    }
+                }
+                response2["result"]["media"].update(new_data)
+        if is_from:
+            new_data = {
+                "from":{
+                    "is_from_me":is_from_me,
+                    "id":str(chatid_from),
+                    "name":str(name_from),
+                    "username":str(self.getPeerUsername(chatid_from)),
+                    "type":str(self.getDialogType(chatid_from))
+                }
+            }
+            response2["result"].update(new_data)
+        if reply:
+            new_data = {
+                "reply":{
+                    "reply-content": str(reply)
+                }
+            }
+            response2["result"].update(new_data)
+            if view_message:
+                new_data = {
+                    "date":str(time),
+                    "text":str(text),
+                    "view":str(view_message)
+            }
             else:
-                return str(text), str(name), str(time), str(message_id), str(chatid), map, is_message_me, reply, is_video, media
-    
+                new_data = {
+                    "date":str(time),
+                    "text":str(text)
+                }
+            response2["result"].update(new_data)
+        
     def driver_command(text, command):
         command = "//" + str(command)
         if str(text) == str(command):
@@ -702,8 +786,8 @@ class Bot:
     def edit_about(self, chat_id, text):
         self.driver.execute_script('appChatsManager.editAbout('+str(chat_id)+', "'+str(text)+'")')
 
-    def onsubtitlechat(self, x, y):
-        chat = self.driver.find_element(By.CSS_SELECTOR, "div.chatlist-parts:nth-child("+str(x)+") > div:nth-child(1) > ul:nth-child(2) > li:nth-child("+str(y)+")")
+    def onsubtitlechat(self, chat):
+        chat = self.driver.find_element(By.CSS_SELECTOR, "li.chatlist-chat:nth-child("+str(chat)+")")
         chatid = chat.get_attribute("data-peer-id")
         cp = chat.find_element(By.CLASS_NAME, "user-caption")
         sub = cp.find_element(By.CLASS_NAME, "dialog-subtitle")
