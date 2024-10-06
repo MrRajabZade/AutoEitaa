@@ -502,6 +502,13 @@ class Bot:
             chat = self.driver.find_element(By.CSS_SELECTOR, "li.chatlist-chat:nth-child("+str(chat)+")")
         except:
             return "not found chat"
+        cp = chat.find_element(By.CLASS_NAME, "user-caption")
+        sub = cp.find_element(By.CLASS_NAME, "dialog-subtitle")
+        try:
+            bubble = sub.find_element(By.CLASS_NAME, "dialog-subtitle-badge")
+            bubbletext = str(bubble.get_attribute('innerHTML'))
+        except:
+            pass
         chatid = str(chat.get_attribute('data-peer-id'))
         sleep(2)
         chat.click()
@@ -625,6 +632,15 @@ class Bot:
                     "date":str(time),
                     "text":str(text)
                 }
+            if bubbletext:
+                if int(bubbletext) >= int(y):
+                    new_data = {
+                        "unread":True,
+                    }
+                else:
+                    new_data = {
+                        "unread":False,
+                    }
             response2["result"+str(x)].update(new_data)
             response.update(response2)
         return response
@@ -673,10 +689,9 @@ class Bot:
         except:
             return "Error in find_message_box"
         while not message_sent:
-            map.send_keys()
+            map.send_keys("s")
             map.send_keys(Keys.CONTROL + 'a')
             map.send_keys(Keys.BACKSPACE)
-        print("sendChatAction is done.")
 
     def sendChatAction(self, chatid):
         self.go_chat(chatid)
