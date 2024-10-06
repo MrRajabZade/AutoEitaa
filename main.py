@@ -389,7 +389,7 @@ class Bot:
                     try:
                        bubble = self.driver.find_elements(By.CLASS_NAME, "bubble")[int(x)]
                     except: 
-                        continue
+                        break
                 message_id = bubble.get_attribute("data-mid")
                 chatbox = bubble.find_element(By.CLASS_NAME, "bubble-content-wrapper")
                 day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
@@ -496,6 +496,138 @@ class Bot:
                 response2["result"+str(x)].update(new_data)
                 response.update(response2)
             return response
+        
+    def on_all_message(self, chat):
+        try:
+            chat = self.driver.find_element(By.CSS_SELECTOR, "li.chatlist-chat:nth-child("+str(chat)+")")
+        except:
+            return "not found chat"
+        chatid = str(chat.get_attribute('data-peer-id'))
+        sleep(2)
+        chat.click()
+        sleep(10)
+        chat.click()
+        sleep(1)
+        response = {}
+        y = 0
+        while True:
+            y += 1
+            x = int(str("-"+str(y)))
+            try:
+                bubble = self.driver.find_elements(By.CLASS_NAME, "bubble")[int(x)]
+            except:
+                self.go_chat(chatid)
+                sleep(10)
+                try:
+                    bubble = self.driver.find_elements(By.CLASS_NAME, "bubble")[int(x)]
+                except: 
+                    break
+            message_id = bubble.get_attribute("data-mid")
+            chatbox = bubble.find_element(By.CLASS_NAME, "bubble-content-wrapper")
+            day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
+            try:
+                namebox = day.find_element(By.CLASS_NAME, "name")
+            except:
+                is_from = False
+            else:
+                is_from = True
+                chatid_from = str(namebox.get_attribute('data-peer-id'))
+                name_from = namebox.find_element(By.CLASS_NAME, "peer-title").text
+            name = self.driver.find_element(By.CSS_SELECTOR, "div.user-title > span:nth-child(1)").text
+            try:
+                map=day.find_element(By.CLASS_NAME, "message")
+            except:
+                return "Error in find_message"
+            try:
+                attachment = day.find_element(By.CLASS_NAME, "attachment")
+            except:
+                media = False
+            else:
+                media = attachment.find_element(By.CLASS_NAME, "media-photo")
+                media = media.get_attribute("src")
+                try:
+                    video_time = attachment.find_element(By.CLASS_NAME, "video-time")
+                except:
+                    is_video = False
+                else:
+                    is_video = True
+                    video_time = str(video_time.text)
+            try:
+                reply = day.find_element(By.CLASS_NAME, "reply")
+            except:
+                reply = False
+            else:
+                reply = reply.find_element(By.CLASS_NAME, "reply-content")
+                reply = reply.get_attribute("innerHTML")
+            time_tgico = map.find_element(By.TAG_NAME, "span")
+            time_inner = time_tgico.find_element(By.CLASS_NAME, "inner").get_attribute("innerHTML").split("</span>")[1]
+            if str(time_inner) == "":
+                is_from_me = False
+            else:
+                is_from_me = True
+            time = time_tgico.get_attribute("title")
+            try:
+                view_message = time_tgico.find_element(By.CLASS_NAME, "post-views").text
+            except:
+                pass
+            text = str(map.text)
+            response2 = {
+                "result"+str(x):{
+                    "message_id":str(message_id),
+                    "chat":{
+                        "id":str(chatid),
+                        "title":str(name),
+                        "username":str(self.getPeerUsername(chatid)),
+                        "type":str(self.getDialogType(chatid))
+                    },
+                }
+            }
+            if media:
+                new_data = {
+                    "media":{
+                        "media-src": str(media)
+                    }
+                }
+                response2["result"+str(x)].update(new_data)
+                if is_video:
+                    new_data = {
+                        "video":{
+                            "video-time":str(video_time)
+                        }
+                    }
+                    response2["result"+str(x)]["media"].update(new_data)
+            if is_from:
+                new_data = {
+                    "from":{
+                        "is_from_me":is_from_me,
+                        "id":str(chatid_from),
+                        "name":str(name_from),
+                        "username":str(self.getPeerUsername(chatid_from)),
+                        "type":str(self.getDialogType(chatid_from))
+                    }
+                }
+                response2["result"+str(x)].update(new_data)
+            if reply:
+                new_data = {
+                    "reply":{
+                        "reply-content": str(reply)
+                    }
+                }
+                response2["result"+str(x)].update(new_data)
+            if view_message:
+                new_data = {
+                    "date":str(time),
+                    "text":str(text),
+                    "view":str(view_message)
+                }
+            else:
+                new_data = {
+                    "date":str(time),
+                    "text":str(text)
+                }
+            response2["result"+str(x)].update(new_data)
+            response.update(response2)
+        return response
 
     def get_info(self, chat_id):
         s = self.driver.find_element(By.CSS_SELECTOR, "div.sidebar-header:nth-child(2)")
