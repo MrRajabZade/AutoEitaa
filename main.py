@@ -16,6 +16,7 @@ from colorama import Fore
 import threading
 import soundcard as sc
 import soundfile as sf
+from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume, IAudioMeterInformation
 
 class Bot:
     def __init__(self, nameBrowser, headless):
@@ -76,6 +77,46 @@ class Bot:
                 os.system('cls')
                 sleep(15.5)
                 break
+
+    def list_active_sessions(self):
+        sessions = AudioUtilities.GetAllSessions()
+        active_sessions = [] 
+
+        print("Programs currently playing sound:")
+        for session in sessions:
+            if session.Process:
+                process_name = session.Process.name()
+                pid = session.Process.pid
+                try:
+                    audio_meter = session._ctl.QueryInterface(IAudioMeterInformation)
+                    peak = audio_meter.GetPeakValue()
+
+                    if peak > 0:
+                        print(f"Program: {process_name}, PID: {pid}, Peak Volume: {peak:.2f}")
+                        active_sessions.append((session, process_name, pid))
+                except Exception as e:
+                    print(f"Could not retrieve audio info for {process_name}: {e}")
+
+        return active_sessions
+
+    def mute_sessions(self, active_sessions):
+        for session, process_name, pid in active_sessions:
+            try:
+                volume = session._ctl.QueryInterface(ISimpleAudioVolume)
+                print(f"Muting Program: {process_name}, PID: {pid}")
+                volume.SetMasterVolume(0, None)
+            except Exception as e:
+                print(f"Could not mute {process_name}: {e}")
+
+    def unmute_sessions(self, active_sessions):
+        for session, process_name, pid in active_sessions:
+            try:
+                volume = session._ctl.QueryInterface(ISimpleAudioVolume)
+                print(f"Unmuting Program: {process_name}, PID: {pid}")
+                volume.SetMasterVolume(1, None)
+            except Exception as e:
+                print(f"Could not unmute {process_name}: {e}")
+            
 
     def copy_to_clipboard(self, file_name):
         command = f"powershell Set-Clipboard -LiteralPath {file_name}"
@@ -449,8 +490,11 @@ class Bot:
                     audio_time = audio_element.find_element(By.CLASS_NAME, "audio-time").text
                     audio_time = str(audio_time).split(":")
                     audio_time = (int(audio_time[0])*60)+int(audio_time[1])
+                    active_sessions = self.list_active_sessions() 
+                    self.mute_sessions(active_sessions)
                     btn_play.click()
                     self.save_audio(audio_time)
+                    self.unmute_sessions(active_sessions)
                     audio = True
                 try:
                     attachment = day.find_element(By.CLASS_NAME, "attachment")
