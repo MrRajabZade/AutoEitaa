@@ -672,6 +672,23 @@ class Bot:
             except:
                 return "Error in find_message"
             try:
+                    doc = map.find_element(By.CLASS_NAME, "document-container")
+            except:
+                pass
+            else:
+                doc2 = doc.find_element(By.CLASS_NAME, "document-wrapper")
+                audio_element = doc2.find_element(By.TAG_NAME, "audio-element")
+                btn_play = audio_element.find_element(By.CLASS_NAME, "audio-toggle")
+                audio_time = audio_element.find_element(By.CLASS_NAME, "audio-time").text
+                audio_time = str(audio_time).split(":")
+                audio_time = (int(audio_time[0])*60)+int(audio_time[1])
+                active_sessions = self.list_active_sessions() 
+                self.mute_sessions(active_sessions)
+                btn_play.click()
+                self.save_audio(audio_time)
+                self.unmute_sessions(active_sessions)
+                audio = True
+            try:
                 attachment = day.find_element(By.CLASS_NAME, "attachment")
             except:
                 media = False
@@ -715,6 +732,14 @@ class Bot:
                     },
                 }
             }
+            if audio:
+                new_data = {
+                    "audio":{
+                        "output_file":"output.mp3",
+                        "audio_time":int(audio_time)
+                    }
+                }
+                response2["result"+str(x)].update(new_data)
             if media:
                 new_data = {
                     "media":{
