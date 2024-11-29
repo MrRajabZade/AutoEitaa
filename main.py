@@ -1,4 +1,5 @@
 from requests import *
+from comtypes import CoInitialize, CoUninitialize
 from time import *
 from sys import *
 import os
@@ -17,6 +18,8 @@ import threading
 import soundcard as sc
 import soundfile as sf
 from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume, IAudioMeterInformation
+
+CoInitialize()
 
 class Bot:
     def __init__(self, nameBrowser, headless):
@@ -1380,3 +1383,7 @@ class Bot:
         t2 = self.driver.find_element(By.CSS_SELECTOR, "button.tgico-deleteuser")
         t2.click()
 
+def cleanup():
+    CoUninitialize()
+
+threading.Thread(target=cleanup).start()
