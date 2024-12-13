@@ -1224,12 +1224,18 @@ class Bot:
                 sleep(1)
                 te3.send_keys(name)
                 sleep(1)
-                try:
-                    rr = self.driver.find_element(By.CSS_SELECTOR, "#contacts > li:nth-child(1)")
-                except:
-                    return
-                chatid = rr.get_attribute("data-peer-id")
-                return str(chatid)
+                for i in range(10):
+                    try:
+                        rr = self.driver.find_element(By.CSS_SELECTOR, "#contacts > li:nth-child("+str(i)+")")
+                    except:
+                        return
+                    else:
+                        rrr = self.driver.find_element(By.CSS_SELECTOR, "#contacts > li:nth-child("+str(i)+") > div:nth-child(3) > p:nth-child(1) > span:nth-child(1) > span:nth-child(2)").text
+                        if str(name) == str(rrr):      
+                            chatid = rr.get_attribute("data-peer-id")
+                            return str(chatid)
+                        else:
+                            continue
         else:
             return
             
@@ -1407,6 +1413,29 @@ class Bot:
         
         t2 = self.driver.find_element(By.CSS_SELECTOR, "button.tgico-deleteuser")
         t2.click()
+
+    def info_tabs(self):
+        self.go_settings()
+        self.driver.find_element(By.CSS_SELECTOR, "button.profile-button:nth-child(2)")
+        sleep(0.2)
+        response = {}
+        for i in range(2, 12):
+            tab = self.driver.find_element(By.CSS_SELECTOR, "div.sidebar-left-section-container:nth-child(5) > div:nth-child(1) > div:nth-child(2) > div:nth-child("+str(i)+")")
+            subtitle = tab.find_element(By.CLASS_NAME, "row-subtitle").text
+            title = tab.find_element(By.CLASS_NAME, "row-title").text
+            data = {
+                str(title):{
+                    "subtitle":str(subtitle)
+                }
+            }
+            data.update(data)
+        return response
+    
+    def Reset_to_Defaults_Tabs(self):
+        self.go_settings()
+        self.driver.find_element(By.CSS_SELECTOR, "button.profile-button:nth-child(2)")
+        sleep(0.2)
+        self.driver.find_element(By.CSS_SELECTOR, "button.btn-color-primary:nth-child(4)")
 
 def cleanup():
     CoUninitialize()
