@@ -1,6 +1,5 @@
 import os
 
-# لیست تمام کتابخانه‌هایی که نیاز دارید
 libraries = [
     "requests",
     "comtypes",
@@ -13,7 +12,6 @@ libraries = [
     "pywin32"
 ]
 
-# نصب هر کتابخانه
 for library in libraries:
     print(f"Installing {library}...")
     os.system(f"pip install {library}")
