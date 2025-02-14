@@ -15,6 +15,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver import ActionChains
 from colorama import Fore
 import threading
+import pyperclip
 import soundcard as sc
 import soundfile as sf
 from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume, IAudioMeterInformation
@@ -272,34 +273,26 @@ class Bot:
         text = text.replace("\"", '\\"')
         self.driver.execute_script(f'appMessagesManager.sendText({chat_id}, "{text}")')
         try:
-            text2, name, Codelanguage, message_id, map = self.onchatupdate()
+            res, map = self.onchatupdate()
         except:
             return None
         else:
-            return text2, name, Codelanguage, message_id, map
-    
-    def reply_to_message(self, text, message):
-        action = ActionChains(self.driver)
-        action.context_click(on_element = message)
-        sleep(1)
-        action.perform()
-        sleep(1)
+            return res, map
+        
+    def reply_to_message(self, text, chatid, msg_id):
+        global message_sent
+        message_sent = True
+        text = str(text)
+        text = text.replace('""', '')
+        text = text.replace("\n", "\\n")
+        text = text.replace("\"", '\\"')
+        self.driver.execute_script('appMessagesManager.sendText('+str(chatid)+', "'+str(text)+'", { replyToMsgId: '+str(msg_id)+' });')
         try:
-            reply = self.driver.find_element(By.CSS_SELECTOR, 'div.tgico-reply > div:nth-child(1)')
+            res, map = self.onchatupdate()
         except:
-            return "Error in find_reply"
-        try:
-            reply.click()
-        except:
-            return "Error in click_reply"
-        try:
-            map = self.driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
-        except:
-            return "Error in find_message_box"
-        map.send_keys(text)
-        map.send_keys(Keys.ENTER)
-        text2, name, Codelanguage, message_id, map2 = self.onchatupdate()
-        return text2, name, Codelanguage, message_id, map2
+            return None
+        else:
+            return res, map
 
     def edit_message(self, textnew, message):
         action = ActionChains(self.driver)
@@ -345,14 +338,18 @@ class Bot:
         textBox.send_keys(target)
         textBox.send_keys(Keys.ENTER)
         sleep(1)
-        forwardtarget = self.driver.find_element(By.CSS_SELECTOR, '.selector > div:nth-child(1) > div:nth-child(1) > ul:nth-child(1) > li:nth-child(1)')
+        try:
+            forwardtarget = self.driver.find_element(By.CSS_SELECTOR, '.selector > div:nth-child(1) > div:nth-child(1) > ul:nth-child(1) > li:nth-child(1)')
+        except:
+            print("Not find a target")
+            return
         forwardtarget.click()
         sleep(1)
-        map = self.driver.find_element(By.CSS_SELECTOR, 'div.chat:nth-child(2) > div:nth-child(4) > div:nth-child(1) > div:nth-child(1) > div:nth-child(8) > div:nth-child(2) > div:nth-child(1)')
-        map.send_keys(Keys.ENTER)
-        text2, name, Codelanguage, message_id, map2 = self.onchatupdate(self.driver)
-        return text2, name, Codelanguage, message_id, map2
-
+        but = self.driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
+        but.send_keys(Keys.ENTER)
+        res, map = self.onchatupdate(self.driver)
+        return res, map
+    
     def pin_message(self, message):
         action = ActionChains(self.driver)
         action.context_click(on_element = message)
@@ -487,6 +484,19 @@ class Bot:
                 except:
                     pass
                 else:
+                    action = ActionChains(self.driver)
+                    action.context_click(on_element = map)
+                    sleep(1)
+                    action.perform()
+                    sleep(1)
+                    try:
+                        tigo_link = self.driver.find_element(By.CSS_SELECTOR, "div.tgico-link:nth-child(12)")
+                    except:
+                        link = ""
+                    else:
+                        tigo_link.click()
+                        sleep(0.1)
+                        link = str(pyperclip.paste())
                     doc2 = doc.find_element(By.CLASS_NAME, "document-wrapper")
                     audio_element = doc2.find_element(By.TAG_NAME, "audio-element")
                     btn_play = audio_element.find_element(By.CLASS_NAME, "audio-toggle")
@@ -545,6 +555,7 @@ class Bot:
                 response2 = {
                     "result"+str(x):{
                         "message_id":str(message_id),
+                        "link":str(link),
                         "chat":{
                             "id":str(chatid),
                             "title":str(name),
@@ -607,7 +618,7 @@ class Bot:
                     }
                 response2["result"+str(x)].update(new_data)
                 response.update(response2)
-            return response
+            return response, map
         
     def on_all_message(self, chat):
         try:
@@ -676,6 +687,19 @@ class Bot:
             except:
                 pass
             else:
+                action = ActionChains(self.driver)
+                action.context_click(on_element = map)
+                sleep(1)
+                action.perform()
+                sleep(1)
+                try:
+                    tigo_link = self.driver.find_element(By.CSS_SELECTOR, "div.tgico-link:nth-child(12)")
+                except:
+                    link = ""
+                else:
+                    tigo_link.click()
+                    sleep(0.1)
+                    link = str(pyperclip.paste())
                 doc2 = doc.find_element(By.CLASS_NAME, "document-wrapper")
                 audio_element = doc2.find_element(By.TAG_NAME, "audio-element")
                 btn_play = audio_element.find_element(By.CLASS_NAME, "audio-toggle")
@@ -724,6 +748,7 @@ class Bot:
             response2 = {
                 "result"+str(x):{
                     "message_id":str(message_id),
+                    "link":str(link),
                     "chat":{
                         "id":str(chatid),
                         "title":str(name),
@@ -796,7 +821,7 @@ class Bot:
                     }
             response2["result"+str(x)].update(new_data)
             response.update(response2)
-        return response
+        return response, map
 
     def get_info(self, chat_id):
         s = self.driver.find_element(By.CSS_SELECTOR, "div.sidebar-header:nth-child(2)")
@@ -996,6 +1021,19 @@ class Bot:
             map=day.find_element(By.CLASS_NAME, "message")
         except:
             return "Error in find_message"
+        action = ActionChains(self.driver)
+        action.context_click(on_element = map)
+        sleep(1)
+        action.perform()
+        sleep(1)
+        try:
+            tigo_link = self.driver.find_element(By.CSS_SELECTOR, "div.tgico-link:nth-child(12)")
+        except:
+            link = ""
+        else:
+            tigo_link.click()
+            sleep(0.1)
+            link = str(pyperclip.paste())
         try:
             attachment = day.find_element(By.CLASS_NAME, "attachment")
         except:
@@ -1033,6 +1071,7 @@ class Bot:
         response2 = {
             "result":{
                 "message_id":str(message_id),
+                "link":str(link),
                 "chat":{
                     "id":str(chatid),
                     "title":str(name),
@@ -1087,7 +1126,7 @@ class Bot:
                 "is_from_me":is_from_me
             }
             response2["result"].update(new_data)
-        return response2
+        return response2, map
         
     def driver_command(text, command):
         command = "//" + str(command)
@@ -1199,45 +1238,46 @@ class Bot:
         elif num[0] == "+":
             num = num.replace("+", "")
         elif num[0:2] == "98":
-            bo2 = self.driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(3) > div:nth-child(1)")
-            try:
-                bo2.click()
-            except:
-                pass
-            te = self.driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(3) > div:nth-child(1)")
-            te.send_keys(Keys.CONTROL + 'a')
-            te.send_keys(Keys.BACKSPACE)
-            te.send_keys(num)
-            te1 = self.driver.find_element(By.CSS_SELECTOR, ".name-fields > div:nth-child(1) > div:nth-child(1)")
-            te1.send_keys(Keys.CONTROL + 'a')
-            te1.send_keys(Keys.BACKSPACE)
-            te1.send_keys(name)
-            bo3 = self.driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(3)")
-            bo3.click()
-            sleep(1)
-            try:
-                rr = self.driver.find_element(By.CSS_SELECTOR, ".toast")
-            except:
-                te3 = self.driver.find_element(By.CSS_SELECTOR, "#contacts-container > div:nth-child(1) > div:nth-child(2) > input:nth-child(1)")
-                te3.send_keys(Keys.CONTROL + 'a')
-                te3.send_keys(Keys.BACKSPACE)
-                sleep(1)
-                te3.send_keys(name)
-                sleep(1)
-                for i in range(10):
-                    try:
-                        rr = self.driver.find_element(By.CSS_SELECTOR, "#contacts > li:nth-child("+str(i)+")")
-                    except:
-                        return
-                    else:
-                        rrr = self.driver.find_element(By.CSS_SELECTOR, "#contacts > li:nth-child("+str(i)+") > div:nth-child(3) > p:nth-child(1) > span:nth-child(1) > span:nth-child(2)").text
-                        if str(name) == str(rrr):      
-                            chatid = rr.get_attribute("data-peer-id")
-                            return str(chatid)
-                        else:
-                            continue
+            pass
         else:
             return
+        bo2 = self.driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(3) > div:nth-child(1)")
+        try:
+            bo2.click()
+        except:
+            pass
+        te = self.driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(3) > div:nth-child(1)")
+        te.send_keys(Keys.CONTROL + 'a')
+        te.send_keys(Keys.BACKSPACE)
+        te.send_keys(num)
+        te1 = self.driver.find_element(By.CSS_SELECTOR, ".name-fields > div:nth-child(1) > div:nth-child(1)")
+        te1.send_keys(Keys.CONTROL + 'a')
+        te1.send_keys(Keys.BACKSPACE)
+        te1.send_keys(name)
+        bo3 = self.driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(3)")
+        bo3.click()
+        sleep(1)
+        try:
+            rr = self.driver.find_element(By.CSS_SELECTOR, ".toast")
+        except:
+            te3 = self.driver.find_element(By.CSS_SELECTOR, "#contacts-container > div:nth-child(1) > div:nth-child(2) > input:nth-child(1)")
+            te3.send_keys(Keys.CONTROL + 'a')
+            te3.send_keys(Keys.BACKSPACE)
+            sleep(1)
+            te3.send_keys(name)
+            sleep(1)
+            for i in range(10):
+                try:
+                    rr = self.driver.find_element(By.CSS_SELECTOR, "#contacts > li:nth-child("+str(i)+")")
+                except:
+                    return
+                else:
+                    rrr = self.driver.find_element(By.CSS_SELECTOR, "#contacts > li:nth-child("+str(i)+") > div:nth-child(3) > p:nth-child(1) > span:nth-child(1) > span:nth-child(2)").text
+                    if str(name) == str(rrr):      
+                        chatid = rr.get_attribute("data-peer-id")
+                        return str(chatid)
+                    else:
+                        continue
             
     def go_chat(self, id):
         self.driver.get("https://web.eitaa.com/#"+str(id))
