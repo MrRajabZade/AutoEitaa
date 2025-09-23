@@ -1,4 +1,5 @@
 from requests import *
+from comtypes import CoInitialize, CoUninitialize
 from time import *
 from sys import *
 import os
@@ -14,7 +15,13 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver import ActionChains
 from colorama import Fore
 import threading
+import pyperclip
+import soundcard as sc
+import soundfile as sf
+from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume, IAudioMeterInformation
 import json
+
+CoInitialize()
 
 class Bot:
     def __init__(self, nameBrowser, headless):
@@ -122,9 +129,61 @@ class Bot:
                         pass
                     break
 
+    def list_active_sessions(self):
+        sessions = AudioUtilities.GetAllSessions()
+        active_sessions = [] 
+
+        print("Programs currently playing sound:")
+        for session in sessions:
+            if session.Process:
+                process_name = session.Process.name()
+                pid = session.Process.pid
+                try:
+                    audio_meter = session._ctl.QueryInterface(IAudioMeterInformation)
+                    peak = audio_meter.GetPeakValue()
+
+                    if peak > 0:
+                        print(f"Program: {process_name}, PID: {pid}, Peak Volume: {peak:.2f}")
+                        active_sessions.append((session, process_name, pid))
+                except Exception as e:
+                    print(f"Could not retrieve audio info for {process_name}: {e}")
+
+        return active_sessions
+
+    def mute_sessions(self, active_sessions):
+        for session, process_name, pid in active_sessions:
+            try:
+                volume = session._ctl.QueryInterface(ISimpleAudioVolume)
+                print(f"Muting Program: {process_name}, PID: {pid}")
+                volume.SetMasterVolume(0, None)
+            except Exception as e:
+                print(f"Could not mute {process_name}: {e}")
+
+    def unmute_sessions(self, active_sessions):
+        for session, process_name, pid in active_sessions:
+            try:
+                volume = session._ctl.QueryInterface(ISimpleAudioVolume)
+                print(f"Unmuting Program: {process_name}, PID: {pid}")
+                volume.SetMasterVolume(1, None)
+            except Exception as e:
+                print(f"Could not unmute {process_name}: {e}")
+            
+
     def copy_to_clipboard(self, file_name):
         command = f"powershell Set-Clipboard -LiteralPath {file_name}"
         os.system(command)
+
+    def save_audio(self, s):
+        OUTPUT_FILE_NAME = "output.mp3"    # file name.
+        SAMPLE_RATE = 48000              # [Hz]. sampling rate.
+        RECORD_SEC = int(s)                  # [sec]. duration recording audio.
+
+        with sc.get_microphone(id=str(sc.default_speaker().name), include_loopback=True).recorder(samplerate=SAMPLE_RATE) as mic:
+            # record audio with loopback from default speaker.
+            data = mic.record(numframes=SAMPLE_RATE*RECORD_SEC)
+            
+            # change "data=data[:, 0]" to "data=data", if you would like to write audio as multiple-channels.
+            sf.write(file=OUTPUT_FILE_NAME, data=data[:, 0], samplerate=SAMPLE_RATE)
 
     def scroll(self):
         self.driver.execute_script("window.scrollTo(0, window.scrollY + 30)")
@@ -260,13 +319,14 @@ class Bot:
         text = text.replace("\n", "\\n")
         text = text.replace("\"", '\\"')
         self.driver.execute_script(f'appMessagesManager.sendText({chat_id}, "{text}")')
+        sleep(0.5)
         try:
-            res = self.onchatupdate()
+            res, map = self.onchatupdate()
         except:
             return None
         else:
-            return res
-    
+            return res, map
+        
     def reply_to_message(self, text, chatid, msg_id):
         global message_sent
         message_sent = True
@@ -276,12 +336,11 @@ class Bot:
         text = text.replace("\"", '\\"')
         self.driver.execute_script('appMessagesManager.sendText('+str(chatid)+', "'+str(text)+'", { replyToMsgId: '+str(msg_id)+' });')
         try:
-            res = self.onchatupdate()
+            res, map = self.onchatupdate()
         except:
             return None
         else:
-            return res
-    
+            return res, map
 
     def edit_message(self, textnew, message):
         action = ActionChains(self.driver)
@@ -327,14 +386,18 @@ class Bot:
         textBox.send_keys(target)
         textBox.send_keys(Keys.ENTER)
         sleep(1)
-        forwardtarget = self.driver.find_element(By.CSS_SELECTOR, '.selector > div:nth-child(1) > div:nth-child(1) > ul:nth-child(1) > li:nth-child(1)')
+        try:
+            forwardtarget = self.driver.find_element(By.CSS_SELECTOR, '.selector > div:nth-child(1) > div:nth-child(1) > ul:nth-child(1) > li:nth-child(1)')
+        except:
+            print("Not find a target")
+            return
         forwardtarget.click()
         sleep(1)
-        map = self.driver.find_element(By.CSS_SELECTOR, 'div.chat:nth-child(2) > div:nth-child(4) > div:nth-child(1) > div:nth-child(1) > div:nth-child(8) > div:nth-child(2) > div:nth-child(1)')
-        map.send_keys(Keys.ENTER)
+        but = self.driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
+        but.send_keys(Keys.ENTER)
         res, map = self.onchatupdate(self.driver)
-        return res
-
+        return res, map
+    
     def pin_message(self, message):
         action = ActionChains(self.driver)
         action.context_click(on_element = message)
@@ -420,9 +483,8 @@ class Bot:
             return None
         else:
             chatid = str(chat.get_attribute('data-peer-id'))
-            sleep(2)
             chat.click()
-            sleep(10)
+            sleep(7.5)
             chat.click()
             sleep(1)
             response = {}
@@ -446,20 +508,71 @@ class Bot:
                     is_from = False
                 else:
                     is_from = True
-                    chatid_from = str(namebox.get_attribute('data-peer-id'))
-                    name_from = namebox.find_element(By.CLASS_NAME, "peer-title").text
+                    try:
+                        chatid_from = str(namebox.get_attribute('data-peer-id'))
+                    except:
+                        j = namebox.find_element(By.CLASS_NAME, "i18n").text
+                        if "هدایت شده از " in str(j):
+                            is_forward = True
+                            peer_title = namebox.find_element(By.CLASS_NAME, "peer-title")
+                            chatid_from = str(peer_title.get_attribute("data-peer-id"))
+                            name_from = str(peer_title.text)
+                        else:
+                            is_forward = False
+                    else:
+                        is_forward = False
+                        name_from = namebox.find_element(By.CLASS_NAME, "peer-title").text
                 name = self.driver.find_element(By.CSS_SELECTOR, "div.user-title > span:nth-child(1)").text
                 try:
                     map=day.find_element(By.CLASS_NAME, "message")
                 except:
                     return "Error in find_message"
                 try:
+                    doc = map.find_element(By.CLASS_NAME, "document-container")
+                except:
+                    pass
+                else:
+                    action = ActionChains(self.driver)
+                    action.context_click(on_element = map)
+                    sleep(1)
+                    action.perform()
+                    sleep(1)
+                    try:
+                        tigo_link = self.driver.find_element(By.CSS_SELECTOR, "div.tgico-link:nth-child(12)")
+                    except:
+                        link = ""
+                    else:
+                        tigo_link.click()
+                        sleep(0.1)
+                        link = str(pyperclip.paste())
+                    doc2 = doc.find_element(By.CLASS_NAME, "document-wrapper")
+                    audio_element = doc2.find_element(By.TAG_NAME, "audio-element")
+                    btn_play = audio_element.find_element(By.CLASS_NAME, "audio-toggle")
+                    audio_time = audio_element.find_element(By.CLASS_NAME, "audio-time").text
+                    audio_time = str(audio_time).split(":")
+                    audio_time = (int(audio_time[0])*60)+int(audio_time[1])
+                    active_sessions = self.list_active_sessions() 
+                    self.mute_sessions(active_sessions)
+                    btn_play.click()
+                    self.save_audio(audio_time)
+                    self.unmute_sessions(active_sessions)
+                    audio = True
+                try:
                     attachment = day.find_element(By.CLASS_NAME, "attachment")
                 except:
                     media = False
                 else:
-                    media = attachment.find_element(By.CLASS_NAME, "media-photo")
-                    media = media.get_attribute("src")
+                    try:
+                        attachment.click()
+                    except:
+                        media = attachment.find_element(By.CLASS_NAME, "media-photo")
+                        media = media.get_attribute("src")
+                    else:
+                        sleep(0.5)
+                        media = self.driver.find_element(By.CSS_SELECTOR, ".media-viewer-aspecter > img:nth-child(1)")
+                        media = media.get_attribute("src")
+                        btn = self.driver.find_element(By.CLASS_NAME, "media-viewer-buttons")
+                        btn.find_element(By.CLASS_NAME, "tgico-close").click()
                     try:
                         video_time = attachment.find_element(By.CLASS_NAME, "video-time")
                     except:
@@ -475,7 +588,7 @@ class Bot:
                     reply = reply.find_element(By.CLASS_NAME, "reply-content")
                     reply = reply.get_attribute("innerHTML")
                 time_tgico = map.find_element(By.TAG_NAME, "span")
-                time_inner = time_tgico.find_element(By.CLASS_NAME, "inner").get_attribute("innerHTML").split("</span>")[1]
+                time_inner = time_tgico.find_element(By.CLASS_NAME, "i18n").text
                 if str(time_inner) == "":
                     is_from_me = False
                 else:
@@ -484,11 +597,13 @@ class Bot:
                 try:
                     view_message = time_tgico.find_element(By.CLASS_NAME, "post-views").text
                 except:
-                    pass
+                    view_message = False
                 text = str(map.text)
+                text = text.split("\n"+str(time_inner))[0]
                 response2 = {
                     "result"+str(x):{
                         "message_id":str(message_id),
+                        "link":str(link),
                         "chat":{
                             "id":str(chatid),
                             "title":str(name),
@@ -497,6 +612,14 @@ class Bot:
                         },
                     }
                 }
+                if audio:
+                    new_data = {
+                        "audio":{
+                            "output_file":"output.mp3",
+                            "audio_time":int(audio_time)
+                        }
+                    }
+                    response2["result"+str(x)].update(new_data)
                 if media:
                     new_data = {
                         "media":{
@@ -514,7 +637,7 @@ class Bot:
                 if is_from:
                     new_data = {
                         "from":{
-                            "is_from_me":is_from_me,
+                            "is_forward":is_forward,
                             "id":str(chatid_from),
                             "name":str(name_from),
                             "username":str(self.getPeerUsername(chatid_from)),
@@ -538,7 +661,8 @@ class Bot:
                 else:
                     new_data = {
                         "date":str(time),
-                        "text":str(text)
+                        "text":str(text),
+                        "is_from_me":is_from_me
                     }
                 response2["result"+str(x)].update(new_data)
                 response.update(response2)
@@ -557,9 +681,8 @@ class Bot:
         except:
             pass
         chatid = str(chat.get_attribute('data-peer-id'))
-        sleep(2)
         chat.click()
-        sleep(10)
+        sleep(7.5)
         chat.click()
         sleep(1)
         response = {}
@@ -577,7 +700,10 @@ class Bot:
                 except: 
                     break
             message_id = bubble.get_attribute("data-mid")
-            chatbox = bubble.find_element(By.CLASS_NAME, "bubble-content-wrapper")
+            try:
+                chatbox = bubble.find_element(By.CLASS_NAME, "bubble-content-wrapper")
+            except:
+                continue
             day = chatbox.find_element(By.CLASS_NAME, "bubble-content")
             try:
                 namebox = day.find_element(By.CLASS_NAME, "name")
@@ -585,13 +711,55 @@ class Bot:
                 is_from = False
             else:
                 is_from = True
-                chatid_from = str(namebox.get_attribute('data-peer-id'))
-                name_from = namebox.find_element(By.CLASS_NAME, "peer-title").text
+                try:
+                    chatid_from = str(namebox.get_attribute('data-peer-id'))
+                except:
+                    j = namebox.find_element(By.CLASS_NAME, "i18n").text
+                    if "هدایت شده از " in str(j):
+                        is_forward = True
+                        peer_title = namebox.find_element(By.CLASS_NAME, "peer-title")
+                        chatid_from = str(peer_title.get_attribute("data-peer-id"))
+                        name_from = str(peer_title.text)
+                    else:
+                        is_forward = False
+                else:
+                    is_forward = False
+                    name_from = namebox.find_element(By.CLASS_NAME, "peer-title").text
             name = self.driver.find_element(By.CSS_SELECTOR, "div.user-title > span:nth-child(1)").text
             try:
                 map=day.find_element(By.CLASS_NAME, "message")
             except:
                 return "Error in find_message"
+            try:
+                    doc = map.find_element(By.CLASS_NAME, "document-container")
+            except:
+                pass
+            else:
+                action = ActionChains(self.driver)
+                action.context_click(on_element = map)
+                sleep(1)
+                action.perform()
+                sleep(1)
+                try:
+                    tigo_link = self.driver.find_element(By.CSS_SELECTOR, "div.tgico-link:nth-child(12)")
+                except:
+                    link = ""
+                else:
+                    tigo_link.click()
+                    sleep(0.1)
+                    link = str(pyperclip.paste())
+                doc2 = doc.find_element(By.CLASS_NAME, "document-wrapper")
+                audio_element = doc2.find_element(By.TAG_NAME, "audio-element")
+                btn_play = audio_element.find_element(By.CLASS_NAME, "audio-toggle")
+                audio_time = audio_element.find_element(By.CLASS_NAME, "audio-time").text
+                audio_time = str(audio_time).split(":")
+                audio_time = (int(audio_time[0])*60)+int(audio_time[1])
+                active_sessions = self.list_active_sessions() 
+                self.mute_sessions(active_sessions)
+                btn_play.click()
+                self.save_audio(audio_time)
+                self.unmute_sessions(active_sessions)
+                audio = True
             try:
                 attachment = day.find_element(By.CLASS_NAME, "attachment")
             except:
@@ -623,11 +791,12 @@ class Bot:
             try:
                 view_message = time_tgico.find_element(By.CLASS_NAME, "post-views").text
             except:
-                pass
+                view_message = False
             text = str(map.text)
             response2 = {
                 "result"+str(x):{
                     "message_id":str(message_id),
+                    "link":str(link),
                     "chat":{
                         "id":str(chatid),
                         "title":str(name),
@@ -636,6 +805,14 @@ class Bot:
                     },
                 }
             }
+            if audio:
+                new_data = {
+                    "audio":{
+                        "output_file":"output.mp3",
+                        "audio_time":int(audio_time)
+                    }
+                }
+                response2["result"+str(x)].update(new_data)
             if media:
                 new_data = {
                     "media":{
@@ -653,6 +830,7 @@ class Bot:
             if is_from:
                 new_data = {
                     "from":{
+                        "is_forward":is_forward,
                         "is_from_me":is_from_me,
                         "id":str(chatid_from),
                         "name":str(name_from),
@@ -677,7 +855,8 @@ class Bot:
             else:
                 new_data = {
                     "date":str(time),
-                    "text":str(text)
+                    "text":str(text),
+                    "is_from_me":is_from_me
                 }
             if bubbletext:
                 if int(bubbletext) >= int(y):
@@ -790,8 +969,12 @@ class Bot:
         number = d.find_element(By.CLASS_NAME, "contact-number")
         return str(name.text), str(number.text), str(chat_id)
 
-    def send_album(self, filepath, caption):
+    def send_album(self, filepath, caption, Send_compressed):
+        global message_sent
+        message_sent = True
+        n = 3
         for i in filepath:
+            n += 1
             image = Image.open(i)
             output = BytesIO()
             image.convert("RGB").save(output, "BMP")
@@ -801,13 +984,27 @@ class Bot:
             map = self.driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
             map.send_keys(Keys.CONTROL + 'v')
         sleep(1)
-        caption2 = self.driver.find_element(By.CSS_SELECTOR, "div.input-field-input")
-        caption2.click()
+        btn = self.driver.find_element(By.XPATH, "//span[contains(., 'ارسال به صورت فشرده')]")
+        title = self.driver.find_element(By.CSS_SELECTOR, ".popup-title > span:nth-child(1)")
+        if Send_compressed:
+            if str(title.text) == "ارسال عکس":
+                pass
+        else:
+            if str(title.text) == "ارسال عکس":
+                btn.click()
+        try:
+            caption2 = self.driver.find_element(By.CSS_SELECTOR, "div.input-field-input")
+            caption2.click()
+        except:
+            caption2 = self.driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child("+str(n)+") > div:nth-child(1)")
+            caption2.click()
         caption2.send_keys(caption)
         send = self.driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(3)")
         send.click()
 
-    def send_other(self, path, caption):
+    def send_other(self, path, caption, Send_compressed):
+        global message_sent 
+        message_sent = True
         n = 3
         for i in path:
             self.copy_to_clipboard(str(i))
@@ -815,7 +1012,20 @@ class Bot:
             map.send_keys(Keys.CONTROL + 'v')
             n += 1
         sleep(1)
-        caption2 = self.driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child("+str(n)+") > div:nth-child(1)")
+        btn = self.driver.find_element(By.XPATH, "//span[contains(., 'ارسال به صورت فشرده')]")
+        title = self.driver.find_element(By.CSS_SELECTOR, ".popup-title > span:nth-child(1)")
+        if Send_compressed:
+            if str(title.text) == "ارسال عکس":
+                pass
+        else:
+            if str(title.text) == "ارسال عکس":
+                btn.click()
+        try:
+            caption2 = self.driver.find_element(By.CSS_SELECTOR, "div.input-field-input")
+            caption2.click()
+        except:
+            caption2 = self.driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child("+str(n)+") > div:nth-child(1)")
+            caption2.click()
         caption2.send_keys(caption)
         send = self.driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(3)")
         send.click()
@@ -840,13 +1050,38 @@ class Bot:
             is_from = False
         else:
             is_from = True
-            chatid_from = str(namebox.get_attribute('data-peer-id'))
-            name_from = namebox.find_element(By.CLASS_NAME, "peer-title").text
+            try:
+                chatid_from = str(namebox.get_attribute('data-peer-id'))
+            except:
+                j = namebox.find_element(By.CLASS_NAME, "i18n").text
+                if "هدایت شده از " in str(j):
+                    is_forward = True
+                    peer_title = namebox.find_element(By.CLASS_NAME, "peer-title")
+                    chatid_from = str(peer_title.get_attribute("data-peer-id"))
+                    name_from = str(peer_title.text)
+                else:
+                    is_forward = False
+            else:
+                is_forward = False
+                name_from = namebox.find_element(By.CLASS_NAME, "peer-title").text
         name = self.driver.find_element(By.CSS_SELECTOR, "div.user-title > span:nth-child(1)").text
         try:
             map=day.find_element(By.CLASS_NAME, "message")
         except:
             return "Error in find_message"
+        action = ActionChains(self.driver)
+        action.context_click(on_element = map)
+        sleep(1)
+        action.perform()
+        sleep(1)
+        try:
+            tigo_link = self.driver.find_element(By.CSS_SELECTOR, "div.tgico-link:nth-child(12)")
+        except:
+            link = ""
+        else:
+            tigo_link.click()
+            sleep(0.1)
+            link = str(pyperclip.paste())
         try:
             attachment = day.find_element(By.CLASS_NAME, "attachment")
         except:
@@ -869,7 +1104,7 @@ class Bot:
             reply = reply.find_element(By.CLASS_NAME, "reply-content")
             reply = reply.get_attribute("innerHTML")
         time_tgico = map.find_element(By.TAG_NAME, "span")
-        time_inner = time_tgico.find_element(By.CLASS_NAME, "inner").get_attribute("innerHTML").split("</span>")[1]
+        time_inner = time_tgico.find_element(By.CLASS_NAME, "i18n").text
         if str(time_inner) == "":
             is_from_me = False
         else:
@@ -878,11 +1113,13 @@ class Bot:
         try:
             view_message = time_tgico.find_element(By.CLASS_NAME, "post-views").text
         except:
-            pass
+            view_message = False
         text = str(map.text)
+        text = text.split("\n"+str(time_inner))[0]
         response2 = {
             "result":{
                 "message_id":str(message_id),
+                "link":str(link),
                 "chat":{
                     "id":str(chatid),
                     "title":str(name),
@@ -908,7 +1145,7 @@ class Bot:
         if is_from:
             new_data = {
                 "from":{
-                    "is_from_me":is_from_me,
+                    "is_forward":is_forward,
                     "id":str(chatid_from),
                     "name":str(name_from),
                     "username":str(self.getPeerUsername(chatid_from)),
@@ -923,17 +1160,19 @@ class Bot:
                 }
             }
             response2["result"].update(new_data)
-            if view_message:
-                new_data = {
-                    "date":str(time),
-                    "text":str(text),
-                    "view":str(view_message)
+        if view_message:
+            new_data = {
+                "date":str(time),
+                "text":str(text),
+                "is_from_me":is_from_me,
+                "view":str(view_message)
+        }
+        else:
+            new_data = {
+                "date":str(time),
+                "text":str(text),
+                "is_from_me":is_from_me
             }
-            else:
-                new_data = {
-                    "date":str(time),
-                    "text":str(text)
-                }
             response2["result"].update(new_data)
         return response2, map
         
@@ -1047,39 +1286,46 @@ class Bot:
         elif num[0] == "+":
             num = num.replace("+", "")
         elif num[0:2] == "98":
-            bo2 = self.driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(3) > div:nth-child(1)")
-            try:
-                bo2.click()
-            except:
-                pass
-            te = self.driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(3) > div:nth-child(1)")
-            te.send_keys(Keys.CONTROL + 'a')
-            te.send_keys(Keys.BACKSPACE)
-            te.send_keys(num)
-            te1 = self.driver.find_element(By.CSS_SELECTOR, ".name-fields > div:nth-child(1) > div:nth-child(1)")
-            te1.send_keys(Keys.CONTROL + 'a')
-            te1.send_keys(Keys.BACKSPACE)
-            te1.send_keys(name)
-            bo3 = self.driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(3)")
-            bo3.click()
-            sleep(1)
-            try:
-                rr = self.driver.find_element(By.CSS_SELECTOR, ".toast")
-            except:
-                te3 = self.driver.find_element(By.CSS_SELECTOR, "#contacts-container > div:nth-child(1) > div:nth-child(2) > input:nth-child(1)")
-                te3.send_keys(Keys.CONTROL + 'a')
-                te3.send_keys(Keys.BACKSPACE)
-                sleep(1)
-                te3.send_keys(name)
-                sleep(1)
-                try:
-                    rr = self.driver.find_element(By.CSS_SELECTOR, "#contacts > li:nth-child(1)")
-                except:
-                    return
-                chatid = rr.get_attribute("data-peer-id")
-                return str(chatid)
+            pass
         else:
             return
+        bo2 = self.driver.find_element(By.CSS_SELECTOR, "button.btn-circle:nth-child(3) > div:nth-child(1)")
+        try:
+            bo2.click()
+        except:
+            pass
+        te = self.driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(3) > div:nth-child(1)")
+        te.send_keys(Keys.CONTROL + 'a')
+        te.send_keys(Keys.BACKSPACE)
+        te.send_keys(num)
+        te1 = self.driver.find_element(By.CSS_SELECTOR, ".name-fields > div:nth-child(1) > div:nth-child(1)")
+        te1.send_keys(Keys.CONTROL + 'a')
+        te1.send_keys(Keys.BACKSPACE)
+        te1.send_keys(name)
+        bo3 = self.driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(3)")
+        bo3.click()
+        sleep(1)
+        try:
+            rr = self.driver.find_element(By.CSS_SELECTOR, ".toast")
+        except:
+            te3 = self.driver.find_element(By.CSS_SELECTOR, "#contacts-container > div:nth-child(1) > div:nth-child(2) > input:nth-child(1)")
+            te3.send_keys(Keys.CONTROL + 'a')
+            te3.send_keys(Keys.BACKSPACE)
+            sleep(1)
+            te3.send_keys(name)
+            sleep(1)
+            for i in range(10):
+                try:
+                    rr = self.driver.find_element(By.CSS_SELECTOR, "#contacts > li:nth-child("+str(i)+")")
+                except:
+                    return
+                else:
+                    rrr = self.driver.find_element(By.CSS_SELECTOR, "#contacts > li:nth-child("+str(i)+") > div:nth-child(3) > p:nth-child(1) > span:nth-child(1) > span:nth-child(2)").text
+                    if str(name) == str(rrr):      
+                        chatid = rr.get_attribute("data-peer-id")
+                        return str(chatid)
+                    else:
+                        continue
             
     def go_chat(self, id):
         self.driver.get("https://web.eitaa.com/#"+str(id))
@@ -1255,3 +1501,31 @@ class Bot:
         
         t2 = self.driver.find_element(By.CSS_SELECTOR, "button.tgico-deleteuser")
         t2.click()
+
+    def info_tabs(self):
+        self.go_settings()
+        self.driver.find_element(By.CSS_SELECTOR, "button.profile-button:nth-child(2)")
+        sleep(0.2)
+        response = {}
+        for i in range(2, 12):
+            tab = self.driver.find_element(By.CSS_SELECTOR, "div.sidebar-left-section-container:nth-child(5) > div:nth-child(1) > div:nth-child(2) > div:nth-child("+str(i)+")")
+            subtitle = tab.find_element(By.CLASS_NAME, "row-subtitle").text
+            title = tab.find_element(By.CLASS_NAME, "row-title").text
+            data = {
+                str(title):{
+                    "subtitle":str(subtitle)
+                }
+            }
+            data.update(data)
+        return response
+    
+    def Reset_to_Defaults_Tabs(self):
+        self.go_settings()
+        self.driver.find_element(By.CSS_SELECTOR, "button.profile-button:nth-child(2)")
+        sleep(0.2)
+        self.driver.find_element(By.CSS_SELECTOR, "button.btn-color-primary:nth-child(4)")
+
+def cleanup():
+    CoUninitialize()
+
+threading.Thread(target=cleanup).start()
