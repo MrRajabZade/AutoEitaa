@@ -24,15 +24,14 @@ import json
 CoInitialize()
 
 class Bot:
-    def __init__(self, nameBrowser, headless):
+    def __init__(self, nameBrowser, headless, autologin):
         options = webdriver.FirefoxOptions()
         if headless:
             options.add_argument('--headless') 
 
-        nameBrowser = nameBrowser.lower()
-        if str(nameBrowser) == "firefox":
+        if str(nameBrowser) == "1":
             self.driver = webdriver.Firefox(options=options)
-        elif str(nameBrowser) == "chrome":
+        elif str(nameBrowser) == "2":
             self.driver = webdriver.Chrome(options=options)
 
         try:
@@ -40,13 +39,8 @@ class Bot:
         except:
             return "Error in go_eitaa_web"
         
-        print("Choose one:")
-        print("1- Entering an account without Logging in")
-        print("2- Login in account")
-        flag = input("==>")
-        if str(flag) == "1":
-            user_id = input("Enter Userid account ==>")
-            with open(f"{user_id}.json", "r") as file:
+        if autologin:
+            with open(f"{autologin}.json", "r") as file:
                 account_data = json.load(file)
                 script = ""
                 for key, value in account_data.items():
@@ -57,7 +51,7 @@ class Bot:
                 self.driver.refresh()
                 os.system('cls')
                 sleep(15.5)
-        if str(flag) == "2":
+        else:
             while True:
                 try:
                     phone_input = self.driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(2) > div:nth-child(1)")
@@ -104,7 +98,7 @@ class Bot:
                             return items;
                         """)
                         self.data_account = data_auth  # data_auth یک دیکشنری است
-    
+
                         eitaa_auth = self.data_account.get("eitaa_auth")
                         if eitaa_auth is None:
                             raise KeyError("'eitaa_auth' key not found in data_account")
@@ -251,8 +245,6 @@ class Bot:
             return False
         else:
             return True
-        
-    # appPeersManager.getPeerSearchText
 
     def getPeerSearchText(self, chat_id):
         r = self.driver.execute_script("return appPeersManager.getPeerSearchText("+str(chat_id)+");")
@@ -261,8 +253,6 @@ class Bot:
     def getPeer(self, chat_id): 
         r = self.driver.execute_script("return appPeersManager.getPeer("+str(chat_id)+");")
         return str(r)
-    
-    # appPeersManager.getDialogType
 
     def getDialogType(self, chat_id): 
         r = self.driver.execute_script("return appPeersManager.getDialogType("+str(chat_id)+");")
@@ -281,8 +271,6 @@ class Bot:
             return True
         else:
             return False
-        
-    # appMessagesManager.canEditMessage()
 
     def canEditMessage(self, msg_id):
         r = self.driver.execute_script("return appMessagesManager.canEditMessage("+str(msg_id)+");")
@@ -290,8 +278,6 @@ class Bot:
             return True
         else:
             return False
-        
-    # appMessagesManager.canForwardMessage
 
     def canEditMessage(self, msg_id):
         r = self.driver.execute_script("return appMessagesManager.canForwardMessage("+str(msg_id)+");")
