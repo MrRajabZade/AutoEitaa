@@ -24,14 +24,14 @@ import json
 CoInitialize()
 
 class Bot:
-    def __init__(self, nameBrowser, headless, autologin):
+    def __init__(self, Browser, headless, autologin):
         options = webdriver.FirefoxOptions()
         if headless:
             options.add_argument('--headless') 
 
-        if str(nameBrowser) == "1":
+        if str(Browser) == "1":
             self.driver = webdriver.Firefox(options=options)
-        elif str(nameBrowser) == "2":
+        elif str(Browser) == "2":
             self.driver = webdriver.Chrome(options=options)
 
         try:
@@ -1514,5 +1514,6 @@ class Bot:
 
 def cleanup():
     CoUninitialize()
+
 
 threading.Thread(target=cleanup).start()
