@@ -24,7 +24,7 @@ import json
 CoInitialize()
 
 class Bot:
-    def __init__(self, Browser: str, headless: bool, autologin: bool):
+    def __init__(self, headless: bool, autologin: bool, Browser: str = "2"): # همه کروم رو دارن 
         options = webdriver.FirefoxOptions()
         if headless:
             options.add_argument('--headless') 
