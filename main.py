@@ -24,7 +24,7 @@ import json
 CoInitialize()
 
 class Bot:
-    def __init__(self, Browser, headless, autologin):
+    def __init__(self, headless: bool, autologin: bool, Browser: str = "2"):
         options = webdriver.FirefoxOptions()
         if headless:
             options.add_argument('--headless') 
@@ -1517,3 +1517,4 @@ def cleanup():
 
 
 threading.Thread(target=cleanup).start()
+
