@@ -24,7 +24,7 @@ import json
 CoInitialize()
 
 class Bot:
-    def __init__(self, Browser, headless, autologin):
+    def __init__(self, Browser: str, headless: bool, autologin: bool):
         options = webdriver.FirefoxOptions()
         if headless:
             options.add_argument('--headless') 
