@@ -9,6 +9,7 @@ libraries = [
     "soundcard",
     "soundfile",
     "pycaw",
+    "requests"
     "pywin32"
 ]
 

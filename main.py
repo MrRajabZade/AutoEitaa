@@ -16,6 +16,7 @@ from selenium.webdriver import ActionChains
 from colorama import Fore
 import threading
 import pyperclip
+import requests
 import soundcard as sc
 import soundfile as sf
 from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume, IAudioMeterInformation
@@ -28,7 +29,12 @@ class Bot:
         options = webdriver.FirefoxOptions()
         if headless:
             options.add_argument('--headless') 
-
+        try:
+            requests.get("https://web.eitaa.com/") #چک کردن وضعیت سرویس ایتا
+        except:
+            print(Fore.RED+"Eitaa Is Down Or System Is Offline!"+Fore.WHITE)
+            return
+        print(Fore.CYAN+"Bip... Bip... Starting!"+Fore.WHITE)
         if str(Browser) == "1":
             self.driver = webdriver.Firefox(options=options)
         elif str(Browser) == "2":
@@ -38,93 +44,105 @@ class Bot:
             self.driver.get("https://web.eitaa.com/")
         except:
             return "Error in go_eitaa_web"
-        
-        if autologin:
-            with open(f"{autologin}.json", "r") as file:
-                account_data = json.load(file)
-                script = ""
-                for key, value in account_data.items():
-                    escaped_key = json.dumps(key)
-                    escaped_value = json.dumps(value)
-                    script += f"localStorage.setItem({escaped_key}, {escaped_value});"
-                self.driver.execute_script(script)
-                self.driver.refresh()
-                os.system('cls')
-                sleep(15.5)
-        else:
-            while True:
-                try:
-                    phone_input = self.driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(2) > div:nth-child(1)")
-                except:
-                    continue
-                else:
-                    phone = input("What's your "+Fore.GREEN+"phone number"+Fore.WHITE+" for login in Eitaa? +")
-                    phone_input.send_keys(Keys.CONTROL + 'a')
-                    phone_input.send_keys(Keys.BACKSPACE)
-                    phone_input.send_keys(str(phone))
-                    self.driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(4)").click()
-                    break
-            while True:
-                try:
-                    code_input = self.driver.find_element(By.CSS_SELECTOR, "input.input-field-input")
-                except:
-                    continue
-                else:
-                    Otp_code = input("What's The "+Fore.GREEN+"OTP Code"+Fore.WHITE+" Sent you in Eitaa or sms? ")
-                    code_input.send_keys(str(Otp_code))
-                    break
-            while True:
-                try:
-                    self.driver.find_element(By.CSS_SELECTOR, '#main-search')
-                except:
-                    status = self.driver.find_element(By.XPATH, "/html/body/div[1]/div/div[2]/div[3]/div/div[3]/div/label/span")
-                    if str(status.text) == "کد نامعتبر است":
-                        Otp_code = input("OTP code is wrong try again!")
-                        exit()
-                    else:     
-                        print("Waithing...", end="\r")
+        def login():
+                while True:
+                    try:
+                        phone_input = self.driver.find_element(By.CSS_SELECTOR, "div.input-field:nth-child(2) > div:nth-child(1)")
+                    except:
                         continue
-                else:
+                    else:
+                        phone = input("What's your "+Fore.GREEN+"phone number"+Fore.WHITE+" for login in Eitaa? +")
+                        phone_input.send_keys(Keys.CONTROL + 'a')
+                        phone_input.send_keys(Keys.BACKSPACE)
+                        phone_input.send_keys(str(phone))
+                        self.driver.find_element(By.CSS_SELECTOR, "button.btn-primary:nth-child(4)").click()
+                        break
+                while True:
+                    try:
+                        code_input = self.driver.find_element(By.CSS_SELECTOR, "input.input-field-input")
+                    except:
+                        continue
+                    else:
+                        Otp_code = input("What's The "+Fore.GREEN+"OTP Code"+Fore.WHITE+" Sent you in Eitaa or sms? ")
+                        code_input.send_keys(str(Otp_code))
+                        break
+                while True:
+                    try:
+                        self.driver.find_element(By.CSS_SELECTOR, '#main-search')
+                    except:
+                        status = self.driver.find_element(By.XPATH, "/html/body/div[1]/div/div[2]/div[3]/div/div[3]/div/label/span")
+                        if str(status.text) == "کد نامعتبر است":
+                            Otp_code = input("OTP code is wrong try again!")
+                            exit()
+                        else:     
+                            print("Waiting...", end="\r")
+                            continue
+                    else:
+                        os.system('cls')
+                        sleep(15.5)
+                        print(Fore.GREEN+"Login Successfully! Welcome!"+Fore.WHITE)
+                        flag = input("Should I Save your Account so you don't have to Login again? (y/n)")
+                        if flag == "y":
+                            data_auth = self.driver.execute_script("""
+                                var items = {};
+                                for (var i = 0; i < localStorage.length; i++) {
+                                    var key = localStorage.key(i);
+                                    items[key] = localStorage.getItem(key);
+                                }
+                                return items;
+                            """)
+                            self.data_account = data_auth  # data_auth یک دیکشنری است
+
+                            eitaa_auth = self.data_account.get("eitaa_auth")
+                            if eitaa_auth is None:
+                                raise KeyError("'eitaa_auth' key not found in data_account")
+                            
+                            if isinstance(eitaa_auth, str):
+                                try:
+                                    eitaa_auth_dict = json.loads(eitaa_auth)
+                                except json.JSONDecodeError as e:
+                                    raise ValueError(f"Invalid JSON in eitaa_auth: {e}")
+                            elif isinstance(eitaa_auth, dict):
+                                eitaa_auth_dict = eitaa_auth
+                            else:
+                                raise TypeError(f"eitaa_auth must be dict or str, got {type(eitaa_auth)}")
+                            
+                            if "id" not in eitaa_auth_dict:
+                                raise KeyError("'id' not found in eitaa_auth dictionary")
+                            user_id = eitaa_auth_dict["id"]
+                            
+                            with open(f"login.json", "w") as file:
+                                json.dump(self.data_account, file, indent=4)
+                            print("Your Account Userid ==> "+str(user_id))
+                        else:
+                            pass
+                        break
+            
+        if autologin:
+            try:
+                with open(f"login.json", "r") as file:
+                    account_data = json.load(file)
+                    script = ""
+                    for key, value in account_data.items():
+                        escaped_key = json.dumps(key)
+                        escaped_value = json.dumps(value)
+                        script += f"localStorage.setItem({escaped_key}, {escaped_value});"
+                    self.driver.execute_script(script)
+                    self.driver.refresh()
                     os.system('cls')
                     sleep(15.5)
-                    flag = input("Should I Save your Account so you don't have to Login again? (y/n)")
-                    if flag == "y":
-                        data_auth = self.driver.execute_script("""
-                            var items = {};
-                            for (var i = 0; i < localStorage.length; i++) {
-                                var key = localStorage.key(i);
-                                items[key] = localStorage.getItem(key);
-                            }
-                            return items;
-                        """)
-                        self.data_account = data_auth  # data_auth یک دیکشنری است
-
-                        eitaa_auth = self.data_account.get("eitaa_auth")
-                        if eitaa_auth is None:
-                            raise KeyError("'eitaa_auth' key not found in data_account")
-                        
-                        if isinstance(eitaa_auth, str):
-                            try:
-                                eitaa_auth_dict = json.loads(eitaa_auth)
-                            except json.JSONDecodeError as e:
-                                raise ValueError(f"Invalid JSON in eitaa_auth: {e}")
-                        elif isinstance(eitaa_auth, dict):
-                            eitaa_auth_dict = eitaa_auth
-                        else:
-                            raise TypeError(f"eitaa_auth must be dict or str, got {type(eitaa_auth)}")
-                        
-                        if "id" not in eitaa_auth_dict:
-                            raise KeyError("'id' not found in eitaa_auth dictionary")
-                        user_id = eitaa_auth_dict["id"]
-                        
-                        with open(f"{user_id}.json", "w") as file:
-                            json.dump(self.data_account, file, indent=4)
-                        print("Your Account Userid ==> "+str(user_id))
-                    else:
-                        pass
-                    break
-
+            except:
+                try:
+                    requests.get("https://web.eitaa.com/")
+                except:
+                    print(Fore.RED+"Eitaa Is Down Or System Is Offline!"+Fore.WHITE)
+                    return
+                print(Fore.RED+"Login Data Not Found!"+Fore.WHITE+"\nLogin "+Fore.RED+"Without"+Fore.WHITE+" AutoLogin First!") #اتو لاگین اینجا مدیریت شده تا در صورت عدم وجود، لاگین بشه
+                login()
+        else:
+            login()
     def list_active_sessions(self):
+        
         sessions = AudioUtilities.GetAllSessions()
         active_sessions = [] 
 
@@ -915,7 +933,7 @@ class Bot:
         req = get("https://eitaayar.ir/api/"+api+"/getMe")
         return str(req.text)
 
-    def create_channel(self, name, bio):
+    def create_channel(self, name:str, bio:str):
         menu = self.driver.find_element(By.CSS_SELECTOR, "#new-menu")
         menu.click()
         newchannel = self.driver.find_element(By.CSS_SELECTOR, ".tgico-newchannel")
@@ -1517,4 +1535,3 @@ def cleanup():
 
 
 threading.Thread(target=cleanup).start()
-
