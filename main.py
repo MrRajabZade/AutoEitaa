@@ -13,6 +13,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver import ActionChains
+from selenium.common.exceptions import (TimeoutException, StaleElementReferenceException, NoSuchElementException, ElementClickInterceptedException)
 from colorama import Fore
 import threading
 import pyperclip
@@ -21,6 +22,16 @@ import soundcard as sc
 import soundfile as sf
 from pycaw.pycaw import AudioUtilities, ISimpleAudioVolume, IAudioMeterInformation
 import json
+import logging
+
+logger = logging.getLogger("autoeitaa")
+logger.setLevel(logging.INFO)
+logger.propagate = False
+if not logger.handlers:
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S"))
+    logger.addHandler(ch)
 
 CoInitialize()
 
@@ -347,28 +358,127 @@ class Bot:
         else:
             return res, map
 
-    def edit_message(self, textnew, message):
-        action = ActionChains(self.driver)
-        action.context_click(on_element = message)
-        sleep(1)
-        action.perform()
-        sleep(1)
+    def edit_message(self, new_text, message):
+        """Edit message caption via UI: right-click → edit → replace text → save.
+        Uses ActionChains for right-click (JS dispatchEvent doesn't trigger Eitaa's menu).
+        Waits for edit-specific UI elements to ensure we're in edit mode."""
+        import time as _t
+        t0 = _t.time()
         try:
-            edit = self.driver.find_element(By.CSS_SELECTOR, 'div.tgico-edit > div:nth-child(1)')
-        except:
-            return "Error in find_edit"
-        try:
-            edit.click()
-        except:
-            return "Error in click_edit"
-        try:
-            map = self.driver.find_element(By.CSS_SELECTOR, 'div.input-message-input:nth-child(1)')
-        except:
-            return "Error in find_message_box"
-        map.send_keys(Keys.CONTROL + 'a')
-        map.send_keys(Keys.BACKSPACE)
-        map.send_keys(textnew)
-        map.send_keys(Keys.ENTER)
+            # Re-find bubble by mid to avoid stale reference
+            mid = message.get_attribute("data-mid")
+            logger.info("[EDIT] Starting for mid=%s", mid)
+            if mid:
+                try:
+                    message = self.driver.find_element(By.CSS_SELECTOR, f'div.bubble[data-mid="{mid}"]')
+                except NoSuchElementException:
+                    logger.error("[EDIT] Bubble mid=%s not found in DOM", mid)
+                    return False
+
+            # Step 1: Scroll into view and right-click with ActionChains (REAL browser event)
+            self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", message)
+            sleep(0.1)
+            ActionChains(self.driver).move_to_element(message).context_click(message).perform()
+
+            # Step 2: Wait for context menu, find and click edit button
+            edit_btn = None
+            for _ in range(10):  # poll up to ~0.5s
+                try:
+                    items = self.driver.find_elements(By.CSS_SELECTOR, "div.btn-menu.contextmenu .btn-menu-item")
+                    for item in items:
+                        cls = item.get_attribute("class") or ""
+                        cls_words = cls.split()
+                        if "tgico-edit" in cls and not any(w in cls_words for w in ["hide", "hi", "hidden"]):
+                            edit_btn = item
+                            break
+                    if edit_btn:
+                        break
+                except: pass
+                sleep(0.05)
+
+            if not edit_btn:
+                # Fallback: try by text
+                try:
+                    for item in self.driver.find_elements(By.CSS_SELECTOR, "div.btn-menu.contextmenu .btn-menu-item"):
+                        cls = item.get_attribute("class") or ""
+                        cls_words = cls.split()
+                        if "ویرایش" in item.text.strip() and not any(w in cls_words for w in ["hide", "hi", "hidden"]):
+                            edit_btn = item; break
+                except: pass
+
+            if not edit_btn:
+                logger.error("[EDIT] No edit button found in context menu")
+                self._escape(); return False
+
+            # Step 3: Click edit button
+            edit_btn.click()
+
+            # Step 4: Wait for EDIT-SPECIFIC send button (proves we're in edit mode, not normal input)
+            edit_mode_active = False
+            for _ in range(20):  # poll up to ~1s
+                try:
+                    btn = self.driver.find_element(By.CSS_SELECTOR, "button.btn-send.edit")
+                    if btn.is_displayed() and btn.rect['width'] > 0:
+                        edit_mode_active = True
+                        break
+                except NoSuchElementException:
+                    pass
+                except: pass
+                sleep(0.05)
+
+            if not edit_mode_active:
+                logger.error("[EDIT] Edit mode not activated (no btn-send.edit found)")
+                self._escape(); return False
+
+            # Also verify edit input is visible
+            input_ready = self.driver.execute_script("""
+                var inputs = document.querySelectorAll('div.input-message-input');
+                for(var i=0; i<inputs.length; i++){
+                    if(inputs[i].offsetHeight > 0) return true;
+                }
+                return false;
+            """)
+            if not input_ready:
+                logger.error("[EDIT] Edit input not visible")
+                self._escape(); return False
+
+            # Step 5: Replace text (fastest method)
+            replace_ok = self._fast_replace(None, new_text)
+            if not replace_ok:
+                logger.error("[EDIT] Text replacement failed")
+                self._escape(); return False
+
+            # Step 6: Save — click the edit-specific send button
+            save_ok = self.driver.execute_script("""
+                var btn = document.querySelector('button.btn-send.edit');
+                if(btn && btn.offsetHeight > 0){btn.click(); return 'edit_btn';}
+                var btns = document.querySelectorAll('button.btn-send');
+                for(var i=0; i<btns.length; i++){
+                    if(btns[i].offsetHeight > 0){btns[i].click(); return 'send_btn_'+i;}
+                }
+                return 'no_btn';
+            """)
+
+            if save_ok == 'no_btn':
+                logger.warning("[EDIT] No save button, trying Enter")
+                ActionChains(self.driver).send_keys(Keys.ENTER).perform()
+
+            sleep(0.1)
+
+            # Verify edit mode closed
+            still_editing = self.driver.execute_script("""
+                var btn = document.querySelector('button.btn-send.edit');
+                return btn && btn.offsetHeight > 0;
+            """)
+            if still_editing:
+                ActionChains(self.driver).send_keys(Keys.ENTER).perform()
+                sleep(0.2)
+
+            elapsed = _t.time() - t0
+            logger.info("[EDIT] Done in %.3fs (save=%s)", elapsed, save_ok)
+            return True
+        except Exception as e:
+            logger.error("[EDIT] Failed: %s", e); self._escape(); return False
 
     def forward_message(self, target, message, quote):
         action = ActionChains(self.driver)
